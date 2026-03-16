@@ -30,7 +30,7 @@ app.get("/", (req, res) => {
 app.post("/api/register", async (req, res) => {
   const { email, password, role } = req.body;
 
-  const existingUser = users.find(user => user.email === email);
+  const existingUser = users.find((user) => user.email === email);
   if (existingUser) {
     return res.status(400).json({ message: "User already exists" });
   }
@@ -41,7 +41,7 @@ app.post("/api/register", async (req, res) => {
     id: Date.now().toString(),
     email,
     password: hashedPassword,
-    role: role || "user"
+    role: role || "user",
   };
 
   users.push(newUser);
@@ -54,7 +54,7 @@ app.post("/api/register", async (req, res) => {
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
 
-  const user = users.find(user => user.email === email);
+  const user = users.find((user) => user.email === email);
   if (!user) {
     return res.status(400).json({ message: "Invalid credentials" });
   }
@@ -67,7 +67,7 @@ app.post("/api/login", async (req, res) => {
   const token = jwt.sign(
     { id: user.id, email: user.email, role: user.role },
     "supersecretkey",
-    { expiresIn: "1d" }
+    { expiresIn: "1d" },
   );
 
   res.json({ token });
@@ -131,7 +131,7 @@ app.post("/api/mood", verifyToken, (req, res) => {
     mood,
     intensity,
     note,
-    date: new Date()
+    date: new Date(),
   });
 
   res.json({ success: true });
@@ -146,14 +146,32 @@ app.get("/api/mood", verifyToken, (req, res) => {
 
 app.post("/api/avatar", verifyToken, (req, res) => {
   const userId = req.user.id;
-  avatars[userId] = req.body;
+  const { avatar3D } = req.body;
 
-  res.json({ success: true });
+  if (!avatars[userId]) {
+    avatars[userId] = {};
+  }
+
+  avatars[userId].avatar3D = avatar3D;
+
+  res.json({
+    success: true,
+    avatar: avatars[userId],
+  });
 });
 
 app.get("/api/avatar", verifyToken, (req, res) => {
   const userId = req.user.id;
-  res.json({ avatar: avatars[userId] || null });
+
+  if (!avatars[userId]) {
+    return res.json({
+      avatar: null,
+    });
+  }
+
+  res.json({
+    avatar: avatars[userId],
+  });
 });
 
 /* ================= PROFILE & PRIVACY ================= */
@@ -164,7 +182,7 @@ app.post("/api/profile", verifyToken, (req, res) => {
 
   profiles[userId] = {
     ...profiles[userId],
-    ...req.body
+    ...req.body,
   };
 
   res.json({ success: true });
@@ -178,8 +196,8 @@ app.get("/api/profile", verifyToken, (req, res) => {
     email: req.user.email,
     profile: profiles[userId] || {
       anonymousName: "Anonymous",
-      anonymousMode: true
-    }
+      anonymousMode: true,
+    },
   });
 });
 
@@ -187,7 +205,7 @@ app.get("/api/profile", verifyToken, (req, res) => {
 app.delete("/api/profile", verifyToken, (req, res) => {
   const userId = req.user.id;
 
-  users = users.filter(u => u.id !== userId);
+  users = users.filter((u) => u.id !== userId);
   delete chats[userId];
   delete moods[userId];
   delete avatars[userId];
@@ -200,10 +218,10 @@ app.delete("/api/profile", verifyToken, (req, res) => {
 
 // Get all users
 app.get("/api/intern/users", verifyToken, verifyIntern, (req, res) => {
-  const safeUsers = users.map(u => ({
+  const safeUsers = users.map((u) => ({
     id: u.id,
     email: u.email,
-    role: u.role
+    role: u.role,
   }));
 
   res.json({ users: safeUsers });
@@ -216,7 +234,7 @@ app.get("/api/intern/user/:id", verifyToken, verifyIntern, (req, res) => {
   res.json({
     moods: moods[userId] || [],
     chats: chats[userId] || [],
-    avatar: avatars[userId] || null
+    avatar: avatars[userId] || null,
   });
 });
 
@@ -227,8 +245,8 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:3000",
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+  },
 });
 
 let waitingUsers = [];
@@ -273,11 +291,11 @@ io.on("connection", (socket) => {
       io.to(socket.partner).emit("partnerDisconnected");
     }
     socket.partner = null;
-    waitingUsers = waitingUsers.filter(u => u.id !== socket.id);
+    waitingUsers = waitingUsers.filter((u) => u.id !== socket.id);
   });
 
   socket.on("disconnect", () => {
-    waitingUsers = waitingUsers.filter(u => u.id !== socket.id);
+    waitingUsers = waitingUsers.filter((u) => u.id !== socket.id);
 
     if (socket.partner) {
       io.to(socket.partner).emit("partnerDisconnected");
