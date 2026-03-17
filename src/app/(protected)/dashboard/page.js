@@ -13,13 +13,11 @@ export default function Dashboard() {
     if (!token) {
       router.push("/login");
     }
-  }, [router]);
+  }, []);
 
   return (
     <div>
-      <h1 className="text-4xl font-bold mb-8">
-        Welcome to Your Safe Space
-      </h1>
+      <h1 className="text-4xl font-bold mb-8">Welcome to Your Safe Space</h1>
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card title="Talk to AI" link="/ai-companion" />
