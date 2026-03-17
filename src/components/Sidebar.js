@@ -2,25 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [role, setRole] = useState(null);
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        const decoded = JSON.parse(atob(token.split(".")[1]));
-        setRole(decoded.role);
-      } catch (err) {
-        console.error("Invalid token");
-      }
-    }
-  }, []);
-
-  const baseLinks = [
+  const links = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/ai-companion", label: "AI Companion" },
     { href: "/anonymous", label: "Anonymous Chat" },
@@ -31,21 +17,11 @@ export default function Sidebar() {
     { href: "/profile", label: "Profile & Privacy" },
   ];
 
-  const internLink =
-    role === "intern"
-      ? { href: "/intern", label: "Intern Panel" }
-      : null;
-
-  const links = internLink ? [...baseLinks, internLink] : baseLinks;
-
   return (
     <aside className="w-64 bg-gradient-to-b from-purple-950 to-black p-6 hidden md:flex flex-col justify-between">
-
       {/* Top Section */}
       <div>
-        <h1 className="text-2xl font-bold mb-8 text-purple-400">
-          MindSafe
-        </h1>
+        <h1 className="text-2xl font-bold mb-8 text-purple-400">MindSafe</h1>
 
         <nav className="flex flex-col space-y-3 text-sm">
           {links.map((link) => {
@@ -78,7 +54,6 @@ export default function Sidebar() {
       >
         Logout
       </button>
-
     </aside>
   );
 }

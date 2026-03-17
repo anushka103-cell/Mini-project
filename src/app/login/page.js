@@ -5,43 +5,33 @@ import { useRouter } from "next/navigation";
 
 export default function Login() {
   const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const handleLogin = async () => {
-    setError("");
-
     try {
       const res = await fetch("http://localhost:5000/api/login", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({
+          email,
+          password,
+        }),
       });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        setError(data.message);
-        return;
-      }
+      if (res.ok) {
+        localStorage.setItem("token", data.token);
 
-      localStorage.setItem("token", data.token);
-
-      // Decode token
-      const payload = JSON.parse(
-        atob(data.token.split(".")[1])
-      );
-
-      if (payload.role === "intern") {
-        router.push("/intern");
-      } else {
         router.push("/dashboard");
+      } else {
+        setError(data.message);
       }
-
-
     } catch (err) {
       setError("Server error");
     }
@@ -49,21 +39,15 @@ export default function Login() {
 
   return (
     <div className="flex items-center justify-center min-h-screen">
-      <div className="bg-white/5 p-10 rounded-2xl border border-white/10 w-full max-w-md backdrop-blur">
-        <h2 className="text-3xl font-bold mb-6 text-center">
-          Welcome Back
-        </h2>
+      <div className="bg-white/5 p-8 rounded-xl w-96">
+        <h1 className="text-3xl mb-6 font-bold">Welcome Back</h1>
 
-        {error && (
-          <p className="text-red-400 text-sm mb-4 text-center">
-            {error}
-          </p>
-        )}
+        {error && <p className="text-red-500 mb-4">{error}</p>}
 
         <input
           type="email"
           placeholder="Email"
-          className="w-full p-3 mb-4 bg-black/50 rounded-lg border border-white/20"
+          className="w-full p-3 mb-4 bg-black/40 rounded"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -71,14 +55,14 @@ export default function Login() {
         <input
           type="password"
           placeholder="Password"
-          className="w-full p-3 mb-6 bg-black/50 rounded-lg border border-white/20"
+          className="w-full p-3 mb-6 bg-black/40 rounded"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
 
         <button
           onClick={handleLogin}
-          className="w-full py-3 bg-purple-600 rounded-lg hover:bg-purple-500 transition"
+          className="w-full bg-purple-600 py-3 rounded"
         >
           Login
         </button>
