@@ -473,7 +473,7 @@ export default function AvatarPage() {
 
           {/* Chat Panel */}
           <div
-            className={`lg:col-span-1 bg-white rounded-xl shadow-lg p-6 flex flex-col h-[600px] ${showCustomizer ? "opacity-50 pointer-events-none" : ""}`}
+            className="lg:col-span-1 bg-white rounded-xl shadow-lg p-6 flex flex-col h-[600px]"
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900">💬 Chat</h2>
@@ -485,7 +485,8 @@ export default function AvatarPage() {
                 )}
                 <button
                   onClick={clearChat}
-                  className="rounded-lg border border-gray-300 px-3 py-1 text-xs font-medium text-gray-500 transition hover:border-rose-400 hover:text-rose-500"
+                  disabled={showCustomizer}
+                  className="rounded-lg border border-gray-300 px-3 py-1 text-xs font-medium text-gray-500 transition hover:border-rose-400 hover:text-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   🗑️ Clear
                 </button>
@@ -493,7 +494,7 @@ export default function AvatarPage() {
             </div>
 
             {/* Chat History */}
-            <div className="flex-1 overflow-y-auto mb-4 space-y-3 bg-gray-50 rounded-lg p-3">
+            <div className={`flex-1 overflow-y-auto mb-4 space-y-3 bg-gray-50 rounded-lg p-3 ${showCustomizer ? "opacity-50" : ""}`}>
               {chatHistory.length === 0 ? (
                 <div className="text-center text-gray-400 py-8">
                   <p className="text-sm">Start a conversation...</p>
@@ -536,18 +537,20 @@ export default function AvatarPage() {
               <div className="flex gap-1 mb-2">
                 <button
                   onClick={() => setShowEmojiBar(!showEmojiBar)}
-                  className="rounded-lg border border-gray-300 px-2 py-1 text-lg transition hover:border-indigo-400"
+                  disabled={showCustomizer}
+                  className="rounded-lg border border-gray-300 px-2 py-1 text-lg transition hover:border-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Emojis"
                 >
                   😊
                 </button>
                 <button
                   onClick={toggleListening}
+                  disabled={showCustomizer}
                   className={`rounded-lg border px-2 py-1 text-lg transition ${
                     isListening
                       ? "border-red-500 bg-red-50 text-red-600 animate-pulse"
                       : "border-gray-300 hover:border-indigo-400"
-                  }`}
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
                   title={isListening ? "Stop listening" : "Speak"}
                 >
                   🎤
@@ -556,14 +559,15 @@ export default function AvatarPage() {
                   value={userMessage}
                   onChange={(e) => setUserMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Type your message..."
-                  className="flex-1 p-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={showCustomizer}
+                  placeholder={showCustomizer ? "Close customizer to chat..." : "Type your message..."}
+                  className="flex-1 p-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   rows="2"
                 />
               </div>
               <button
                 onClick={handleSendMessage}
-                disabled={isLoading || !userMessage.trim() || !userId}
+                disabled={isLoading || !userMessage.trim() || showCustomizer}
                 className="w-full bg-indigo-600 text-white p-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 {isLoading ? "Sending..." : "Send"}
