@@ -21,14 +21,21 @@ function createChatController(userDataService, { chatbotServiceUrl }) {
       const profileName =
         profileResult &&
         profileResult.profile &&
-        typeof profileResult.profile.anonymousName === "string"
+        typeof profileResult.profile.fullName === "string"
+          ? profileResult.profile.fullName.trim()
+          : "";
+      const anonName =
+        profileResult &&
+        profileResult.profile &&
+        typeof profileResult.profile.anonymousName === "string" &&
+        profileResult.profile.anonymousName.trim().toLowerCase() !== "anonymous"
           ? profileResult.profile.anonymousName.trim()
           : "";
       const fallbackEmailName =
         typeof req.user.email === "string" && req.user.email.includes("@")
           ? req.user.email.split("@")[0]
           : "";
-      userName = profileName || fallbackEmailName || "friend";
+      userName = profileName || anonName || fallbackEmailName || "friend";
     } catch {
       // Profile lookup failed (e.g. DB cold start); continue with default name
     }

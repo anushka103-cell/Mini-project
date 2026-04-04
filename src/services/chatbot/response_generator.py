@@ -367,11 +367,18 @@ class ResponseGenerator:
         rag_context: str,
         memory_context: str,
         style: str = "balanced",
+        user_name: str = "friend",
+        use_name: bool = True,
     ) -> str:
         depth_label = DEPTH_LEVELS.get(depth_level, "surface")
         traits = ", ".join(PERSONALITY_TRAITS)
         forbidden = ", ".join(FORBIDDEN_TONES)
         boundaries = "\n".join(f"- {b}" for b in SAFETY_BOUNDARIES)
+
+        # Determine display name
+        safe_name = (user_name or "").strip() if use_name else ""
+        if safe_name.lower() in ("friend", "anonymous", ""):
+            safe_name = ""
 
         parts = [
             f"You are {COMPANION_NAME} — a warm, empathetic AI mental health companion.",
@@ -422,17 +429,26 @@ class ResponseGenerator:
         }
         length_rule = length_rules.get(style, length_rules["balanced"])
 
+        # User name context
+        if safe_name:
+            parts.append(f"## User info")
+            parts.append(f"- The user's name is {safe_name}. Use it occasionally (not every sentence) to feel personal.")
+            parts.append("")
+
         parts.extend([
             "## Response rules",
             length_rule,
-            "- Address the user directly (you/your).",
-            "- Match the tone and weight of the user's message. A casual greeting deserves a casual, warm reply — NOT a heavy emotional response.",
-            "- If the user sends a simple greeting like 'Hi' or 'Hello', respond naturally and invite them to share what's on their mind.",
-            "- Acknowledge their emotion first, then apply the strategy.",
+            "- Sound like a real, caring friend — not a customer service bot or therapist reading from a script.",
+            "- Vary your opening lines. NEVER start two replies the same way.",
+            "- Match the tone and weight of the user's message. A casual 'Hi' deserves a casual, warm reply — NOT a heavy emotional response.",
+            "- If the user sends a simple greeting, respond naturally and warmly. Ask what's on their mind.",
+            "- When the user shares feelings, acknowledge them specifically (not generically) then apply the strategy.",
             "- If you reference a technique, weave it in naturally — never list or lecture.",
             "- End with an open question or gentle invitation to continue.",
-            "- Do NOT start with 'I hear you' or 'I'm sorry to hear that' or other repetitive openers.",
-            "- Do NOT echo the user's exact message back to them in quotes.",
+            "- Be specific, not vague. 'That sounds like a tough day at work' is better than 'I appreciate you sharing that.'",
+            "- Do NOT use filler phrases like 'I appreciate you sharing that' or 'Thank you for opening up' or 'It's good to check in'.",
+            "- Do NOT start with 'I hear you' or 'I'm sorry to hear that'.",
+            "- Do NOT echo the user's exact words back in quotes.",
             "- Do NOT exaggerate or catastrophize simple messages.",
             "- Do NOT use bullet points or numbered lists.",
             "- Do NOT diagnose, prescribe, or replace professional help.",
@@ -456,6 +472,8 @@ class ResponseGenerator:
         rag_context: str = "",
         memory_context: str = "",
         style: str = "balanced",
+        user_name: str = "friend",
+        use_name: bool = True,
     ) -> str | None:
         """
         Call Groq LLM for response generation.
@@ -474,6 +492,8 @@ class ResponseGenerator:
             rag_context=rag_context,
             memory_context=memory_context,
             style=style,
+            user_name=user_name,
+            use_name=use_name,
         )
 
         messages = [{"role": "system", "content": system_prompt}]
@@ -538,10 +558,6 @@ class ResponseGenerator:
         if crisis_level in self.CRISIS_RESPONSES and crisis_level == "high":
             return self.CRISIS_RESPONSES["high"]
 
-        # ── Greeting shortcut — keep it light ──
-        if intent == "greeting":
-            return self._greeting_response(user_name, use_name)
-
         # ── Resolve strategy ──
         if not strategy:
             strategy = strategies_for(intent or "emotional_venting", emotion)[0]
@@ -564,6 +580,8 @@ class ResponseGenerator:
                 rag_context=rag_context,
                 memory_context=memory_context,
                 style=style,
+                user_name=user_name,
+                use_name=use_name,
             )
             if llm_response:
                 return llm_response
