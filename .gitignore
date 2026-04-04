@@ -61,5 +61,6 @@ next-env.d.ts
 *.fbx
 *.vrm
 *.glb
+!public/avatars/AvatarSample.vrm
 !public/avatars/ExprAvatar1.vrm
 !public/avatars/ExprAvatar2.vrm

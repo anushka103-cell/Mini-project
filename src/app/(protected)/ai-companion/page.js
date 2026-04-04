@@ -151,7 +151,7 @@ export default function AICompanion() {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 18000);
+      const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s for Render free-tier cold starts
 
       // Send plaintext to chatbot — it needs raw text for emotion detection.
       // Chat history is encrypted separately when persisted below.

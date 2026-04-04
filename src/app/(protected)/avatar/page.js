@@ -122,7 +122,7 @@ export default function AvatarPage() {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 18000);
+      const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s for Render free-tier cold starts
 
       const chatbotRes = await fetchWithAuth(
         `${API_BASE_URL}/api/chatbot`,
