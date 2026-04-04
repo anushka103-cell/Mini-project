@@ -163,22 +163,35 @@ export default function AvatarPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 120_000); // 120s for Render free-tier cold starts
 
-      const chatbotRes = await fetchWithAuth(
+      const chatbotPayload = {
+        content: userInput,
+        session_id: chatSessionId,
+        style: "warm",
+        use_name: true,
+        use_memory: true,
+      };
+      const chatbotOpts = {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(chatbotPayload),
+        signal: controller.signal,
+      };
+
+      let chatbotRes = await fetchWithAuth(
         `${API_BASE_URL}/api/chatbot`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: userInput,
-            session_id: chatSessionId,
-            style: "warm",
-            use_name: true,
-            use_memory: true,
-          }),
-          signal: controller.signal,
-        },
+        chatbotOpts,
         API_BASE_URL,
       );
+
+      // Retry once on 502 (chatbot waking up from sleep on free tier)
+      if (chatbotRes.status === 502) {
+        await new Promise((r) => setTimeout(r, 3000));
+        chatbotRes = await fetchWithAuth(
+          `${API_BASE_URL}/api/chatbot`,
+          { ...chatbotOpts, signal: controller.signal },
+          API_BASE_URL,
+        );
+      }
 
       clearTimeout(timeoutId);
 
@@ -199,6 +212,9 @@ export default function AvatarPage() {
       } else if (chatbotRes.status === 429) {
         aiResponseText =
           "I need a moment to catch my breath — too many messages at once. Please wait a minute and try again.";
+      } else if (chatbotRes.status === 502 || chatbotRes.status === 503) {
+        aiResponseText =
+          "I'm waking up — the service was resting. Please send your message again in a few seconds.";
       } else {
         aiResponseText =
           "I'm having trouble connecting right now. Please try again.";

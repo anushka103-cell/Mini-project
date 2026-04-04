@@ -173,24 +173,35 @@ export default function AICompanion() {
 
       // Send plaintext to chatbot — it needs raw text for emotion detection.
       // Chat history is encrypted separately when persisted below.
-      const chatbotRes = await fetchWithAuth(
+      const chatbotPayload = {
+        content: userInput,
+        session_id: chatSessionId,
+        style: responseStyle,
+        use_name: useName,
+        use_memory: useMemory,
+      };
+      const chatbotOpts = {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(chatbotPayload),
+        signal: controller.signal,
+      };
+
+      let chatbotRes = await fetchWithAuth(
         `${API_BASE_URL}/api/chatbot`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            content: userInput,
-            session_id: chatSessionId,
-            style: responseStyle,
-            use_name: useName,
-            use_memory: useMemory,
-          }),
-          signal: controller.signal,
-        },
+        chatbotOpts,
         API_BASE_URL,
       );
+
+      // Retry once on 502 (chatbot waking up from sleep on free tier)
+      if (chatbotRes.status === 502) {
+        await new Promise((r) => setTimeout(r, 3000));
+        chatbotRes = await fetchWithAuth(
+          `${API_BASE_URL}/api/chatbot`,
+          { ...chatbotOpts, signal: controller.signal },
+          API_BASE_URL,
+        );
+      }
 
       clearTimeout(timeoutId);
 
@@ -211,6 +222,9 @@ export default function AICompanion() {
       } else if (chatbotRes.status === 429) {
         aiResponseText =
           "I need a moment to catch my breath — too many messages at once. Please wait a minute and try again.";
+      } else if (chatbotRes.status === 502 || chatbotRes.status === 503) {
+        aiResponseText =
+          "I'm waking up — the service was resting. Please send your message again in a few seconds.";
       } else {
         aiResponseText =
           "I am having trouble connecting right now. Please try again.";
