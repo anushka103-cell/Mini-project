@@ -480,7 +480,7 @@ function createAuthService({
     return { status: 200, body: { message: "Signed out successfully" } };
   }
 
-  async function loginWithGoogleProfile({ email, googleId, metadata }) {
+  async function loginWithGoogleProfile({ email, googleId, name, metadata }) {
     const normalizedEmail = String(email).trim().toLowerCase();
     let user = await userStore.findUserByEmail(normalizedEmail);
 
@@ -499,6 +499,21 @@ function createAuthService({
         isVerified: true,
         provider: user.provider === "local" ? "hybrid" : "google",
       });
+    }
+
+    // Save Google profile name if the user profile doesn't have one yet
+    if (name && typeof name === "string" && name.trim()) {
+      try {
+        const profile = (await userStore.getUserProfile(user.id)) || {};
+        if (!profile.fullName || !profile.fullName.trim()) {
+          await userStore.upsertUserProfile(user.id, {
+            ...profile,
+            fullName: name.trim(),
+          });
+        }
+      } catch {
+        // Non-critical — continue even if profile save fails
+      }
     }
 
     return createSessionTokens(user, metadata);

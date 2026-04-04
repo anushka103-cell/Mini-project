@@ -31,10 +31,15 @@ function createChatController(userDataService, { chatbotServiceUrl }) {
         profileResult.profile.anonymousName.trim().toLowerCase() !== "anonymous"
           ? profileResult.profile.anonymousName.trim()
           : "";
-      const fallbackEmailName =
-        typeof req.user.email === "string" && req.user.email.includes("@")
-          ? req.user.email.split("@")[0]
-          : "";
+      // Only use the email prefix as a name if it looks like a real first name
+      // (alphabetic only, no dots/numbers/underscores, 2-20 chars)
+      let fallbackEmailName = "";
+      if (typeof req.user.email === "string" && req.user.email.includes("@")) {
+        const prefix = req.user.email.split("@")[0];
+        if (/^[a-zA-Z]{2,20}$/.test(prefix)) {
+          fallbackEmailName = prefix.charAt(0).toUpperCase() + prefix.slice(1).toLowerCase();
+        }
+      }
       userName = profileName || anonName || fallbackEmailName || "friend";
     } catch {
       // Profile lookup failed (e.g. DB cold start); continue with default name

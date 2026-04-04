@@ -102,6 +102,7 @@ function createGoogleAuthRoutes({
       const tokens = await authService.loginWithGoogleProfile({
         email: userInfo.email,
         googleId: userInfo.id,
+        name: userInfo.name || "",
         metadata: {
           ipAddress: req.ip,
           userAgent: req.get("user-agent") || "unknown",
