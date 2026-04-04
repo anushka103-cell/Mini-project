@@ -215,6 +215,10 @@ export function useVoicePlayback(onLipSyncUpdate = null, avatarRef = null) {
     return () => {
       if (unsubEnd) unsubEnd();
       if (unsubError) unsubError();
+      // Cancel any ongoing speech when component unmounts / navigates away
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, []);
 

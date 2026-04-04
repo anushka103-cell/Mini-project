@@ -32,6 +32,26 @@ export default function AvatarCustomizer({
   const [statusMessage, setStatusMessage] = useState("");
   const lastSavedState = useRef(formData);
 
+  // Sync formData when parent preferences change (e.g. loaded from localStorage)
+  useEffect(() => {
+    setFormData((prev) => {
+      const updated = {
+        avatarModel: currentPreferences.avatarModel || prev.avatarModel,
+        avatarPreset: currentPreferences.avatarPreset || prev.avatarPreset,
+        background: currentPreferences.background || prev.background,
+        emotion: currentPreferences.emotion || prev.emotion,
+        voiceProfile:
+          currentPreferences.voiceSettings?.voiceProfile || prev.voiceProfile,
+        speed: currentPreferences.voiceSettings?.rate ?? prev.speed,
+        pitch: currentPreferences.voiceSettings?.pitch ?? prev.pitch,
+        volume: currentPreferences.voiceSettings?.volume ?? prev.volume,
+        showCaptions: currentPreferences.showCaptions ?? prev.showCaptions,
+        autoPlayVoice: currentPreferences.autoPlayVoice ?? prev.autoPlayVoice,
+      };
+      return JSON.stringify(updated) !== JSON.stringify(prev) ? updated : prev;
+    });
+  }, [currentPreferences]);
+
   // Track changes - compare against the actual last saved state, not currentPreferences
   useEffect(() => {
     const hasActualChanges =

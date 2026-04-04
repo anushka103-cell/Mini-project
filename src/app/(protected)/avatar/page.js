@@ -48,22 +48,31 @@ export default function AvatarPage() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speakingText, setSpeakingText] = useState("");
 
-  // ✨ PREFERENCES STATE
-  const [preferences, setPreferences] = useState({
-    avatarModel: "female",
-    avatarPreset: "neutral_light",
-    background: "soft_blue",
-    emotion: "neutral",
-    skinTone: "#d4a574",
-    hairColor: "#1a1a2e",
-    clothingColor: "#7ddc7d",
-    accentColor: "#e85eb8",
-    voiceSettings: {
-      voiceProfile: "ana_friendly",
-      pitch: 1.0,
-      rate: 1.0,
-      volume: 0.8,
-    },
+  // ✨ PREFERENCES STATE — read localStorage synchronously to avoid flash
+  const [preferences, setPreferences] = useState(() => {
+    const defaults = {
+      avatarModel: "female",
+      avatarPreset: "neutral_light",
+      background: "soft_blue",
+      emotion: "neutral",
+      skinTone: "#d4a574",
+      hairColor: "#1a1a2e",
+      clothingColor: "#7ddc7d",
+      accentColor: "#e85eb8",
+      voiceSettings: {
+        voiceProfile: "ana_friendly",
+        pitch: 1.0,
+        rate: 1.0,
+        volume: 0.8,
+      },
+    };
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("avatarPreferences");
+        if (saved) return { ...defaults, ...JSON.parse(saved) };
+      } catch {}
+    }
+    return defaults;
   });
 
   // Save preferences to state and localStorage
@@ -99,16 +108,7 @@ export default function AvatarPage() {
     const id = "user-" + Math.random().toString(36).slice(2, 9);
     setUserId(id);
 
-    // Load saved preferences from localStorage
-    try {
-      const savedPrefs = localStorage.getItem("avatarPreferences");
-      if (savedPrefs) {
-        const parsedPrefs = JSON.parse(savedPrefs);
-        setPreferences(parsedPrefs);
-      }
-    } catch (e) {
-      console.log("Could not load saved preferences:", e);
-    }
+    // Preferences already loaded synchronously via useState initializer
 
     // Fire-and-forget wake-up ping so the chatbot is ready by first message
     fetch(`${API_BASE_URL}/api/chatbot/health`, { method: "GET" }).catch(
@@ -191,6 +191,15 @@ export default function AvatarPage() {
     };
     window.speechSynthesis.speak(utterance);
   };
+
+  // ── Cleanup: cancel speech synthesis on unmount / navigation ──
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   // ── Voice Input: Speech-to-text via Web Speech API ──
   const toggleListening = () => {
