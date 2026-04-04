@@ -56,6 +56,10 @@ async function createApp() {
   }
 
   const app = express();
+
+  // Trust Render's reverse proxy so rate limiter sees real client IPs
+  app.set("trust proxy", 1);
+
   const allowedOrigins = FRONTEND_ORIGIN.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
