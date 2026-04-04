@@ -22,12 +22,24 @@
 | emotion_detection | 8001 | RoBERTa NLP emotion classification |
 | mood_analytics    | 8002 | Time-series trend forecasting      |
 | crisis_detection  | 8003 | Risk assessment ML model           |
-| recommendation    | 8004 | Collaborative filtering            |
+| chatbot           | 8004 | AI companion (Groq LLM)           |
+
+### AI Chatbot (Groq LLM)
+
+- **Model**: Llama 3.3 70B via Groq Cloud API
+- **Temperature**: 0.65 (balanced creativity)
+- **Max Tokens**: 768
+- **Eager Init**: Groq client initialized at FastAPI startup (reduces cold-start latency)
+- **Quality Filter**: Post-processing checks — banned openers, quoted echoes, word repetition (≥3), seeking_advice content validation
+- **Retry Logic**: LLM retried once on quality filter failure; backend retries on 5xx/network error (3-4s delay)
+- **Frontend Retry**: Auto-retry once after 3s on 502 (Render cold start)
+- **Fallback**: Template-based responses when `GROQ_API_KEY` is not set
+- **Required Env Var**: `GROQ_API_KEY` on Render mindsafe-chatbot service
 
 ### Data Layer
 
-- **PostgreSQL 15**: Encrypted user data, mood logs, conversations
-- **Redis 7**: Session cache, real-time data
+- **PostgreSQL 15**: Encrypted user data, mood logs, conversations (Neon free tier in production)
+- **Redis 7**: Session cache, real-time data (optional — Upstash)
 - **pgvector**: Semantic search embeddings
 
 ---
@@ -256,6 +268,12 @@ GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
 RESEND_API_KEY=<from Resend>
 ```
 
+### Chatbot Service (.env)
+
+```
+GROQ_API_KEY=gsk_<your-key-from-console.groq.com>
+```
+
 ### Services (docker-compose env_file)
 
 ```
@@ -308,26 +326,30 @@ open http://localhost:3001              # Grafana dashboard
 ✅ **Core Features**
 
 - Real-time mood tracking (1-10 scale)
-- AI chatbot companion with emotional support
+- AI chatbot companion (Groq LLM with quality filter + retry logic)
+- Clear chat history (DELETE /api/chat)
+- Emoji quick-send bar (AI Companion, Avatar, Anonymous chat)
 - Emotion detection from text (RoBERTa)
 - Mood trend analysis & forecasting
 - Crisis detection & risk scoring
 - Personalized recommendations
+- Google OAuth saves profile name automatically
 
 ✅ **Privacy & Security**
 
 - End-to-end encryption for sensitive data
 - GDPR compliance (consent, portability, erasure)
 - HIPAA-ready audit trails & access controls
-- Rate limiting & DDoS protection
+- Rate limiting (1000 req/15min production, trust proxy enabled)
+- Frontend + backend retry for Render cold starts (502/5xx)
 - Regular backup & disaster recovery
 
 ✅ **Operations**
 
-- Docker containerization
-- Kubernetes-ready deployment
+- Deployed on Vercel (frontend) + Render (backend) + Neon (PostgreSQL)
+- Docker containerization (local dev)
 - Prometheus monitoring & Grafana dashboards
-- Centralized logging (ELK stack)
+- Centralized logging
 - Automated security scanning
 
 ---
@@ -397,4 +419,4 @@ See `ARCHITECTURE.md` for:
 
 ---
 
-**Last Updated**: March 30, 2026 | **Architecture Version**: 1.0 | **Status**: Production-Ready
+**Last Updated**: April 2026 | **Architecture Version**: 1.1 | **Status**: Production (Vercel + Render + Neon)

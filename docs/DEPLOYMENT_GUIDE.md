@@ -88,6 +88,14 @@ When Render prompts for manual env vars (`sync: false`), set:
 | `RABBITMQ_URL`   | CloudAMQP URL (optional)                |
 | `RESEND_API_KEY` | Resend.com API key for email (optional) |
 
+**mindsafe-chatbot** (required for AI chat):
+
+| Variable       | Value                                                                          |
+| -------------- | ------------------------------------------------------------------------------ |
+| `GROQ_API_KEY` | Groq API key from [console.groq.com](https://console.groq.com) (starts `gsk_`) |
+
+> **Without `GROQ_API_KEY`**, the chatbot falls back to generic template responses and all LLM quality features (quality filter, prompt engineering, retry logic) are disabled.
+
 ### 3c. Wait for Deploys
 
 - **mindsafe-api** (Node.js) — builds in ~1 minute
@@ -175,7 +183,11 @@ Click **Save Changes** → service auto-redeploys.
 - Free Render services **sleep after 15 minutes of inactivity**. First request after sleep takes ~50 seconds.
 - The API falls back to **in-memory storage** if PostgreSQL is unreachable (data lost on restart).
 - Emotion detection uses **HuggingFace Inference API** (cloud) instead of local models to fit in 512MB RAM.
-- Chatbot uses **Groq cloud API** for LLM responses — set `GROQ_API_KEY` in Render env vars for the chatbot service if you want AI chat to work.
+- Chatbot uses **Groq cloud API** for LLM responses — set `GROQ_API_KEY` in Render env vars for the chatbot service. Without this key, the chatbot uses template fallback (generic, repetitive responses).
+- The Express API Gateway uses `trust proxy = 1` for correct client IP detection behind Render's reverse proxy (needed for rate limiting).
+- Rate limiting is set to **1000 requests per 15 minutes** in production.
+- Google OAuth now saves the user's Google profile name automatically.
+- Frontend auto-retries once after 3 seconds on 502 errors (Render cold start). Backend also retries chatbot requests on 5xx/network errors.
 - The `mindsafe-worker` (background worker) is not deployed — Render free tier doesn't support `type: worker`.
 
 ---
@@ -192,6 +204,13 @@ Click **Save Changes** → service auto-redeploys.
 - Python services must not load large ML models locally
 - Emotion service uses HuggingFace Inference API (no local torch)
 - Chatbot service uses Groq API (no local transformers)
+
+### Chatbot gives generic/repetitive responses
+
+- **Root cause**: `GROQ_API_KEY` is not set on the mindsafe-chatbot service in Render
+- Go to Render → mindsafe-chatbot → Environment → add `GROQ_API_KEY`
+- Get a key from [console.groq.com](https://console.groq.com) → API Keys (sign in with Google)
+- Redeploy after adding the key
 
 ### CORS errors in browser
 

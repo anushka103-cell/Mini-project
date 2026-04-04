@@ -325,6 +325,7 @@ const AVAILABILITY = ["5min", "15min", "30min"];
 const AGE_BRACKETS = ["under18", "18-24", "25-34", "35+"];
 const WARMUP_OPTIONS = ["off", "1min", "2min", "5min", "untilReady"];
 const EMOJI_REACTIONS = ["❤️", "😂", "🤗", "💪", "🙏", "😢", "👍", "✨"];
+const QUICK_EMOJIS = ["😊", "😢", "😰", "😡", "😴", "🤗", "💪", "🙏", "❤️", "😔"];
 const GRATITUDE_CARDS = [
   "Thank you for listening. It meant more than you know. 💙",
   "I'm glad we talked. You made my day a little brighter. ✨",
@@ -453,6 +454,7 @@ export default function AnonymousChat() {
   const [showCrisisBanner, setShowCrisisBanner] = useState(false);
   const [crisisMessage, setCrisisMessage] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showQuickEmojis, setShowQuickEmojis] = useState(false);
   const [showGratitude, setShowGratitude] = useState(false);
   const [reconnectCodeResult, setReconnectCodeResult] = useState("");
   const [chatEndReason, setChatEndReason] = useState("");
@@ -1329,18 +1331,44 @@ export default function AnonymousChat() {
             </div>
 
             {/* Input bar */}
+            {showQuickEmojis && (
+              <div className="mb-2 flex flex-wrap gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2">
+                {QUICK_EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => setInput((prev) => prev + emoji)}
+                    className="text-xl transition hover:scale-125"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="flex gap-2">
-              {/* Emoji picker toggle */}
+              {/* Quick emoji toggle */}
+              <button
+                onClick={() => {
+                  setShowQuickEmojis(!showQuickEmojis);
+                  setShowEmojiPicker(false);
+                  setShowGratitude(false);
+                }}
+                className={`rounded-xl border px-3 py-2.5 text-sm transition ${t.inputBg.split(' ').slice(0,2).join(' ')} hover:opacity-80`}
+                aria-label="Quick emojis"
+              >
+                😊
+              </button>
+              {/* Emoji reaction picker toggle */}
               <div className="relative">
                 <button
                   onClick={() => {
                     setShowEmojiPicker(!showEmojiPicker);
                     setShowGratitude(false);
+                    setShowQuickEmojis(false);
                   }}
                   className={`rounded-xl border px-3 py-2.5 text-sm transition ${t.inputBg.split(' ').slice(0,2).join(' ')} hover:opacity-80`}
                   aria-label="Emoji reactions"
                 >
-                  😊
+                  🎉
                 </button>
                 {showEmojiPicker && (
                   <div className={`absolute bottom-12 left-0 z-10 flex gap-1 rounded-xl border p-2 shadow-lg ${t.popoverBg}`}>
@@ -1363,6 +1391,7 @@ export default function AnonymousChat() {
                   onClick={() => {
                     setShowGratitude(!showGratitude);
                     setShowEmojiPicker(false);
+                    setShowQuickEmojis(false);
                   }}
                   className={`rounded-xl border px-3 py-2.5 text-sm transition ${t.inputBg.split(' ').slice(0,2).join(' ')} hover:opacity-80`}
                   aria-label="Send gratitude card"

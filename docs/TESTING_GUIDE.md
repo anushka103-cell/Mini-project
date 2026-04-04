@@ -388,6 +388,7 @@ Use `curl`, Postman, or the [OpenAPI spec](api/openapi.yaml) to test each endpoi
 | POST   | `/api/chatbot` | `{content, style, use_name, use_memory}` | 200             |
 | POST   | `/api/chat`    | `{role, content}`                        | 200             |
 | GET    | `/api/chat`    | —                                        | 200             |
+| DELETE | `/api/chat`    | —                                        | 200             |
 
 ### Mood Endpoints (Auth Required)
 
@@ -507,22 +508,29 @@ curl http://localhost:8005/categories
 ### Chatbot Service (Port 8004)
 
 ```powershell
-# Start new conversation
-curl -X POST http://localhost:8004/conversation/new `
-  -H "Content-Type: application/json" `
-  -d '{"user_id":"test-user"}'
+# Health check
+curl http://localhost:8004/health
 
-# Send message
+# Send message (direct to chatbot microservice)
 curl -X POST http://localhost:8004/chat `
   -H "Content-Type: application/json" `
-  -d '{"session_id":"<session_id>","message":"I have been feeling stressed about my exams"}'
+  -d '{"content":"I have been feeling stressed about my exams","style":"empathetic","user_name":"TestUser","use_name":true,"use_memory":false}'
 
-# Get conversation
-curl http://localhost:8004/conversation/<session_id>
+# Send message via API Gateway (preferred — includes auth & retry)
+curl -X POST http://localhost:5000/api/chatbot `
+  -H "Content-Type: application/json" `
+  -H "Authorization: Bearer <jwt_token>" `
+  -d '{"content":"I need something to help me relax","style":"empathetic","use_name":true,"use_memory":true}'
 
 # Service stats
 curl http://localhost:8004/stats
 ```
+
+**Notes:**
+- Requires `GROQ_API_KEY` env var for LLM responses (falls back to templates without it)
+- Quality filter checks: banned openers, quoted echoes, word repetition
+- Backend retries once on 5xx errors (3s delay) for Render cold starts
+- `seeking_advice` intent triggers actionable suggestions in response
 
 ### Mood Analytics Service (Port 8002)
 

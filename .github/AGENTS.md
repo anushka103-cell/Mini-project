@@ -62,13 +62,13 @@ Specialized agent for security audits and compliance.
 
 ### 4. **Deployment-Executor**
 
-Specialized agent for Docker and infrastructure management.
+Specialized agent for deployment and infrastructure management.
 
 **Use for:**
 
-- Building and pushing Docker images
+- Building and pushing Docker images (local dev)
 - Starting/stopping services locally
-- Deploying to AWS production
+- Deploying to production (Vercel + Render + Neon)
 - Health monitoring and service checks
 - Blue-green and canary deployments
 - Service scaling and load testing
@@ -185,14 +185,14 @@ All agents MUST follow these rules when creating files:
 
 ## Output Files
 
-All agents generate timestamped output files in `Agent_log/`:
+All agents generate output files in `MindSafe_Logs/`:
 
-- `database_init_YYYYMMDD.log` - Database initialization
-- `deployment_YYYYMMDD_HHMMSS.log` - Deployment logs
-- `security_audit_YYYYMMDD.json` - Security findings
-- `test_results_YYYYMMDD.json` - Test results
-- `monitoring_config_YYYYMMDD.yaml` - Monitoring configuration
-- `compliance_report_YYYYMMDD.md` - Compliance documentation
+- `database_init.log` - Database initialization
+- `deployment.log` - Deployment logs
+- `security_audit.json` - Security findings
+- `test_results.json` - Test results
+- `monitoring_config.yaml` - Monitoring configuration
+- `compliance_report.md` - Compliance documentation
 
 ## Status
 
@@ -214,5 +214,5 @@ All agent files are stored in: `.github/agents/`
 ## Need Help?
 
 - Check the agent's full documentation in the `.github/agents/` folder
-- Review output logs in `Agent_log/` folder
-- Consult the implementation guide in `docs/`
+- Review output logs in `MindSafe_Logs/` folder
+- Consult the deployment guide in `docs/DEPLOYMENT_GUIDE.md`
