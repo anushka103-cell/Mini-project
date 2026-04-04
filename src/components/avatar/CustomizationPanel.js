@@ -12,10 +12,10 @@ import VoiceSettings from "./VoiceSettings";
  * Camera presets for the 3D avatar viewer
  */
 export const CAMERA_PRESETS = {
-  upper: { position: [0, 1.4, 2.5], label: "Upper body" },
-  face: { position: [0, 1.5, 1.2], label: "Face close-up" },
-  full: { position: [0, 0.8, 4.0], label: "Full body" },
-  side: { position: [1.8, 1.2, 1.8], label: "Side view" },
+  upper: { position: [0, 1.45, 1.6], label: "Upper body" },
+  face: { position: [0, 1.55, 0.8], label: "Face close-up" },
+  full: { position: [0, 0.8, 3.2], label: "Full body" },
+  side: { position: [1.4, 1.3, 1.2], label: "Side view" },
 };
 
 /**

@@ -408,7 +408,7 @@ const Avatar3D = forwardRef(function Avatar3D(
       style={{ width: "100%", height: "100%", minHeight: 300, ...style }}
     >
       <Canvas
-        camera={{ position: [0, 1.4, 2.5], fov: 45, near: 0.1, far: 50 }}
+        camera={{ position: [0, 1.45, 1.6], fov: 45, near: 0.1, far: 50 }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1.0;
