@@ -255,19 +255,16 @@ function validateProfilePatch(req, res, next) {
     return failValidation(res, "A valid email is required");
   }
 
-  if (!isNonEmptyString(payload.mobile)) {
-    return failValidation(res, "mobile is required");
+  if (isNonEmptyString(payload.mobile)) {
+    const normalizedMobile = payload.mobile.trim().replace(/[\s()-]/g, "");
+    if (!MOBILE_REGEX.test(normalizedMobile)) {
+      return failValidation(
+        res,
+        "mobile must be a valid number with country code (10-15 digits)",
+      );
+    }
+    payload.mobile = normalizedMobile;
   }
-
-  const normalizedMobile = payload.mobile.trim().replace(/[\s()-]/g, "");
-  if (!MOBILE_REGEX.test(normalizedMobile)) {
-    return failValidation(
-      res,
-      "mobile must be a valid number with country code (10-15 digits)",
-    );
-  }
-
-  payload.mobile = normalizedMobile;
   payload.fullName = payload.fullName.trim();
   payload.email = payload.email.trim().toLowerCase();
 

@@ -79,12 +79,6 @@ export default function Profile() {
       return;
     }
 
-    if (!mobile.trim()) {
-      setSaveStatus("error");
-      setStatusMessage("Mobile number is required.");
-      return;
-    }
-
     if (!email) {
       setSaveStatus("error");
       setStatusMessage("Please sign in again before saving your profile.");
@@ -106,7 +100,7 @@ export default function Profile() {
           body: JSON.stringify({
             fullName: fullName.trim(),
             email: email.trim(),
-            mobile: mobile.trim(),
+            ...(mobile.trim() ? { mobile: mobile.trim() } : {}),
             anonymousName: anonymousName.trim() || "Anonymous",
             anonymousMode,
           }),
@@ -297,40 +291,26 @@ export default function Profile() {
             <input
               type="tel"
               value={mobile}
-              onChange={(event) => setMobile(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-cyan-500"
+              disabled
+              className="mt-2 w-full rounded-xl border border-slate-600 bg-slate-900/50 px-4 py-3 text-sm text-slate-400 outline-none cursor-not-allowed opacity-60"
               placeholder="+91XXXXXXXXXX"
             />
             <p className="mt-2 text-xs text-slate-300">
               Status: {isMobileVerified ? "Verified" : "Not verified"}
             </p>
             {!isMobileVerified ? (
-              <div className="mt-2 space-y-2">
+              <div className="mt-2 space-y-2 opacity-50">
                 <button
                   type="button"
-                  onClick={requestMobileOtp}
-                  className="rounded-lg border border-cyan-500 px-3 py-2 text-xs font-semibold text-cyan-300 transition hover:bg-cyan-500/10"
+                  disabled
+                  className="rounded-lg border border-slate-500 px-3 py-2 text-xs font-semibold text-slate-400 cursor-not-allowed"
+                  title="SMS verification coming soon"
                 >
                   Send OTP
                 </button>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={mobileOtp}
-                    onChange={(event) => setMobileOtp(event.target.value)}
-                    inputMode="numeric"
-                    maxLength={6}
-                    placeholder="Enter OTP"
-                    className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={verifyMobileOtp}
-                    className="rounded-lg bg-cyan-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-cyan-600"
-                  >
-                    Verify
-                  </button>
-                </div>
+                <p className="text-xs text-slate-500 italic">
+                  SMS verification coming soon
+                </p>
               </div>
             ) : null}
           </div>
