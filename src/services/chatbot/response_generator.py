@@ -48,7 +48,7 @@ _groq_client = None
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_MAX_TOKENS = int(os.getenv("GROQ_MAX_TOKENS", "768"))
-GROQ_TEMPERATURE = float(os.getenv("GROQ_TEMPERATURE", "0.75"))
+GROQ_TEMPERATURE = float(os.getenv("GROQ_TEMPERATURE", "0.65"))
 
 
 def _get_groq_client():
@@ -381,6 +381,20 @@ class ResponseGenerator:
             safe_name = ""
 
         parts = [
+            "## ABSOLUTE RULES (violation = automatic rejection)",
+            "NEVER use these phrases anywhere in your response:",
+            "  'I hear you', 'I hear that', 'Thank you for sharing', 'Thank you for opening up',",
+            "  'I appreciate you sharing', 'I appreciate you talking', 'It's good to check in',",
+            "  'I'm sorry to hear', 'I'm here for you', 'That's a completely valid',",
+            "  'Your feelings are valid', 'I'm ready to support you'.",
+            "",
+            "NEVER echo the user's message back in quotes (e.g. 'you mentioned \"I am stressed\"').",
+            "NEVER repeat the same word or concept more than once. Use synonyms.",
+            "NEVER give a response that is ONLY validation/acknowledgement — always add something useful.",
+            "When the user ASKS for help/advice/tips/techniques, you MUST give 2-3 SPECIFIC suggestions.",
+            "",
+            "---",
+            "",
             f"You are {COMPANION_NAME} — a warm, empathetic AI mental health companion.",
             f"Core traits: {traits}.",
             f"Forbidden tones: {forbidden}.",
@@ -406,8 +420,17 @@ class ResponseGenerator:
             "encourage": "Highlight the user's strengths and progress. Be uplifting and forward-looking.",
             "reframe": "Gently offer an alternative perspective AND practical coping techniques. Combine cognitive reframing with actionable steps.",
         }
-        parts.append(f"## Strategy instruction\n{strategy_guidance.get(strategy, strategy_guidance['support'])}")
-        parts.append("")
+
+        # Override strategy for seeking_advice — ALWAYS give actionable suggestions
+        if intent == "seeking_advice":
+            parts.append("## Strategy instruction")
+            parts.append("The user is ASKING FOR HELP. You MUST provide 2-3 specific, actionable suggestions.")
+            parts.append("Examples of good suggestions: 'Try the 4-7-8 breathing technique', 'Take a 10-minute walk outside', 'Write down 3 things you can control about this situation'.")
+            parts.append("Do NOT deflect with 'what would you like to talk about?' — they already told you what they want.")
+            parts.append("")
+        else:
+            parts.append(f"## Strategy instruction\n{strategy_guidance.get(strategy, strategy_guidance['support'])}")
+            parts.append("")
 
         # RAG context
         if rag_context:
@@ -436,39 +459,14 @@ class ResponseGenerator:
             parts.append("")
 
         parts.extend([
-            "## HARD RULES (never break these)",
-            "BANNED OPENERS — never start a reply with any of these:",
-            "  'I hear you', 'I hear that', 'Thank you for sharing', 'Thank you for opening up',",
-            "  'I appreciate you sharing', 'It's good to check in', 'I'm sorry to hear',",
-            "  'I'm here for you', 'That's a completely valid', 'Your feelings are valid'.",
-            "If your response begins with any of those phrases, REWRITE IT with a different opener.",
-            "",
-            "BANNED PATTERNS:",
-            "- Do NOT echo the user's exact words back in quotes (e.g. 'you said \"I am stressed\"').",
-            "- Do NOT exaggerate or catastrophize simple messages.",
-            "- Do NOT use bullet points or numbered lists.",
-            "- Do NOT diagnose, prescribe, or replace professional help.",
-            "- Do NOT mention that you're an AI unless directly asked.",
-            "",
-            "ANTI-REPETITION (CRITICAL):",
-            "- NEVER repeat the same keyword or concept more than ONCE in a response.",
-            "  BAD: 'The pressure you feel... pressure is intense... pressure building up'",
-            "  GOOD: 'Exam season can feel overwhelming. That weight on your shoulders is real.'",
-            "- Use SYNONYMS and VARIED PHRASING. If a word already appeared, pick a different one.",
-            "- Each sentence must add NEW meaning — no restating the same idea.",
-            "",
-            "## Response rules",
+            "## Response style",
             length_rule,
-            "- Sound like a real, caring friend — not a customer service bot or therapist reading from a script.",
-            "- Vary your opening lines. NEVER start two replies the same way.",
-            "- Match the tone and weight of the user's message. A casual 'Hi' deserves a casual, warm reply — NOT a heavy emotional response.",
-            "- If the user sends a simple greeting, respond naturally and warmly. Ask what's on their mind.",
-            "- When the user shares feelings, acknowledge them specifically (not generically) then apply the strategy.",
-            "- If you reference a technique, weave it in naturally — never list or lecture.",
-            "- ALWAYS end with an open question or gentle invitation to continue. Never end on a dead-end statement.",
-            "- Be specific, not vague. 'That sounds like a tough day at work' is better than 'I appreciate you sharing that.'",
-            "- CRITICAL: When the user asks for advice, tips, techniques, or things to do — ALWAYS provide at least 2-3 concrete, actionable suggestions. Do not deflect with validation-only responses.",
-            "- CRITICAL: When the user shares an emotion, your response MUST include EITHER a thoughtful follow-up question OR a concrete helpful suggestion — NEVER pure acknowledgement alone.",
+            "- Sound like a real, caring friend — not a therapist reading from a script.",
+            "- Vary your opening lines. Start differently each time.",
+            "- Match the tone and weight of the user's message.",
+            "- If the user sends a greeting, respond naturally and ask what's on their mind.",
+            "- ALWAYS end with a specific follow-up question or a concrete suggestion.",
+            "- Be specific: 'Exam season can feel relentless' beats 'I appreciate you sharing that.'",
         ])
 
         return "\n".join(parts)
@@ -547,6 +545,74 @@ class ResponseGenerator:
             return None
 
     # ──────────────────────────────────────────────────────
+    #  Post-processing quality filter
+    # ──────────────────────────────────────────────────────
+
+    _BANNED_STARTS = [
+        "i hear you", "i hear that", "thank you for sharing",
+        "thank you for opening up", "i appreciate you sharing",
+        "i appreciate you talking", "it's good to check in",
+        "i'm sorry to hear", "i'm here for you",
+        "that's a completely valid", "your feelings are valid",
+        "i'm ready to support you", "it's good that you",
+    ]
+
+    @staticmethod
+    def _has_quoted_echo(text: str, user_message: str) -> bool:
+        """Check if response quotes back the user's message."""
+        if not user_message:
+            return False
+        um_lower = user_message.lower().strip()
+        # Check for quoted echoes like 'you mentioned "I am stressed"'
+        return (f'"{um_lower}"' in text.lower() or
+                f"'{um_lower}'" in text.lower() or
+                f"you mentioned '{um_lower}'" in text.lower() or
+                f'you said "{um_lower}"' in text.lower())
+
+    @staticmethod
+    def _has_word_repetition(text: str, threshold: int = 3) -> bool:
+        """Check if any meaningful word appears too many times."""
+        words = re.findall(r'\b[a-z]{4,}\b', text.lower())
+        skip = {"that", "this", "with", "your", "have", "been", "from",
+                "what", "about", "when", "would", "could", "more", "some",
+                "them", "they", "their", "there", "than", "like", "just",
+                "really", "feel", "feeling"}
+        from collections import Counter
+        counts = Counter(w for w in words if w not in skip)
+        return any(c >= threshold for c in counts.values())
+
+    def _passes_quality_check(self, text: str, user_message: str, intent: str) -> bool:
+        """Return True if LLM response passes basic quality checks."""
+        lower = text.lower().strip()
+
+        # Check banned openers
+        for banned in self._BANNED_STARTS:
+            if lower.startswith(banned):
+                logger.info("Quality check FAIL: banned opener '%s'", banned)
+                return False
+
+        # Check quoted echo
+        if self._has_quoted_echo(text, user_message):
+            logger.info("Quality check FAIL: quoted echo of user message")
+            return False
+
+        # Check word repetition
+        if self._has_word_repetition(text):
+            logger.info("Quality check FAIL: excessive word repetition")
+            return False
+
+        # Check seeking_advice gets actual advice
+        if intent == "seeking_advice":
+            advice_signals = ["try", "technique", "exercise", "breathe", "breathing",
+                              "walk", "write", "journal", "listen", "music", "minute",
+                              "step", "practice", "focus", "count", "stretch", "meditat"]
+            if not any(sig in lower for sig in advice_signals):
+                logger.info("Quality check FAIL: seeking_advice but no actionable content")
+                return False
+
+        return True
+
+    # ──────────────────────────────────────────────────────
     #  Primary entry point
     # ──────────────────────────────────────────────────────
     def generate(
@@ -585,7 +651,7 @@ class ResponseGenerator:
             if isinstance(conversation_history, list):
                 history_str = "\n".join(str(item) for item in conversation_history)
 
-            llm_response = self.generate_llm_response(
+            llm_kwargs = dict(
                 user_message=user_message,
                 emotion=emotion,
                 intensity=intensity,
@@ -599,7 +665,21 @@ class ResponseGenerator:
                 user_name=user_name,
                 use_name=use_name,
             )
+
+            # Try up to 2 times — retry if quality check fails
+            for attempt in range(2):
+                llm_response = self.generate_llm_response(**llm_kwargs)
+                if llm_response and self._passes_quality_check(
+                    llm_response, user_message, intent or "emotional_venting"
+                ):
+                    return llm_response
+                if llm_response:
+                    logger.info("LLM response rejected by quality filter (attempt %d), retrying", attempt + 1)
+
+            # If both attempts were rejected, still return the last LLM response
+            # (better than template fallback)
             if llm_response:
+                logger.info("Returning LLM response despite quality check failure")
                 return llm_response
 
         # ── Fallback: template-based pipeline (v2) ──

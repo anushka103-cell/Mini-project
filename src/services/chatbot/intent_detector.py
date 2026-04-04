@@ -29,6 +29,11 @@ INTENT_KEYWORDS: dict[str, list[str]] = {
         "help me cope", "help me sleep", "help me focus",
         "what helps", "something to help", "anything to help",
         "techniques", "exercises", "methods",
+        "something to relax", "something to calm",
+        "something to do", "something for",
+        "to relax", "to calm down", "to feel better",
+        "to cope", "to de-stress", "to destress",
+        "to unwind", "to sleep better",
     ],
     "reflection": [
         "i've been thinking", "looking back", "i realize",
