@@ -400,11 +400,11 @@ class ResponseGenerator:
 
         # Strategy guidance
         strategy_guidance = {
-            "reflect": "Mirror the user's feelings back. Use reflective listening. Do NOT give advice yet.",
-            "explore": "Ask open-ended questions to help the user understand their feelings better.",
-            "support": "Validate emotions and provide comfort. Be warm and reassuring.",
-            "encourage": "Highlight the user's strengths and progress. Be uplifting.",
-            "reframe": "Gently offer an alternative perspective. Use cognitive reframing techniques.",
+            "reflect": "Mirror the user's feelings back. Use reflective listening. Do NOT give advice yet unless the user explicitly asks for it.",
+            "explore": "Ask open-ended questions AND provide 2-3 concrete, actionable suggestions (breathing exercises, grounding techniques, specific activities). Help the user understand their feelings while giving them practical tools.",
+            "support": "Validate emotions and provide comfort. Be warm and reassuring. If the user asks for help, give specific suggestions alongside the validation.",
+            "encourage": "Highlight the user's strengths and progress. Be uplifting and forward-looking.",
+            "reframe": "Gently offer an alternative perspective AND practical coping techniques. Combine cognitive reframing with actionable steps.",
         }
         parts.append(f"## Strategy instruction\n{strategy_guidance.get(strategy, strategy_guidance['support'])}")
         parts.append("")
@@ -436,6 +436,20 @@ class ResponseGenerator:
             parts.append("")
 
         parts.extend([
+            "## HARD RULES (never break these)",
+            "BANNED OPENERS — never start a reply with any of these:",
+            "  'I hear you', 'I hear that', 'Thank you for sharing', 'Thank you for opening up',",
+            "  'I appreciate you sharing', 'It's good to check in', 'I'm sorry to hear',",
+            "  'I'm here for you', 'That's a completely valid', 'Your feelings are valid'.",
+            "If your response begins with any of those phrases, REWRITE IT with a different opener.",
+            "",
+            "BANNED PATTERNS:",
+            "- Do NOT echo the user's exact words back in quotes (e.g. 'you said \"I am stressed\"').",
+            "- Do NOT exaggerate or catastrophize simple messages.",
+            "- Do NOT use bullet points or numbered lists.",
+            "- Do NOT diagnose, prescribe, or replace professional help.",
+            "- Do NOT mention that you're an AI unless directly asked.",
+            "",
             "## Response rules",
             length_rule,
             "- Sound like a real, caring friend — not a customer service bot or therapist reading from a script.",
@@ -446,13 +460,7 @@ class ResponseGenerator:
             "- If you reference a technique, weave it in naturally — never list or lecture.",
             "- End with an open question or gentle invitation to continue.",
             "- Be specific, not vague. 'That sounds like a tough day at work' is better than 'I appreciate you sharing that.'",
-            "- Do NOT use filler phrases like 'I appreciate you sharing that' or 'Thank you for opening up' or 'It's good to check in'.",
-            "- Do NOT start with 'I hear you' or 'I'm sorry to hear that'.",
-            "- Do NOT echo the user's exact words back in quotes.",
-            "- Do NOT exaggerate or catastrophize simple messages.",
-            "- Do NOT use bullet points or numbered lists.",
-            "- Do NOT diagnose, prescribe, or replace professional help.",
-            "- Do NOT mention that you're an AI unless directly asked.",
+            "- CRITICAL: When the user asks for advice, tips, techniques, or things to do — ALWAYS provide at least 2-3 concrete, actionable suggestions. Do not deflect with validation-only responses.",
         ])
 
         return "\n".join(parts)
