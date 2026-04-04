@@ -2,42 +2,124 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { fetchWithAuth } from "@/lib/authClient";
+import {
+  createEncryptedEnvelope,
+  getEncryptionKey,
+} from "@/lib/encryptionClient";
+import { useVoicePlayback } from "@/hooks/useVoicePlayback";
+import { usePreferencesManager } from "@/hooks/usePreferencesManager";
+import VoiceSettings from "@/components/avatar/VoiceSettings";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function AICompanion() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [chatSessionId, setChatSessionId] = useState(null);
+  const [responseStyle, setResponseStyle] = useState("warm");
+  const [useName, setUseName] = useState(true);
+  const [useMemory, setUseMemory] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+  const [prefsSaveState, setPrefsSaveState] = useState("idle");
+
+  // Voice & Audio States
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [mouthShape, setMouthShape] = useState(0);
+  const [currentPhoneme, setCurrentPhoneme] = useState("");
+
+  const { speak, stop, isPlaying } = useVoicePlayback((data) => {
+    setMouthShape(data.mouthShape || 0);
+    setCurrentPhoneme(data.phoneme || "");
+  });
+
+  // Preferences manager
+  const { preferences, getPreference, updatePreferences } =
+    usePreferencesManager();
+
   const messagesEndRef = useRef(null);
+  const hasLoadedPreferences = useRef(false);
   const router = useRouter();
 
-  const dangerWords = ["suicide", "kill myself", "die", "end my life", "self harm"];
-
-  // Protect route
+  // Load data on mount
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-    } else {
-      loadChatHistory(token);
-    }
+    loadChatHistory();
+    // Preferences are loaded automatically by usePreferencesManager hook
   }, []);
 
-  // Load chat history from backend
-  const loadChatHistory = async (token) => {
-    try {
-      const res = await fetch("http://localhost:5000/api/chat", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+  // Apply loaded preferences
+  useEffect(() => {
+    if (preferences && !hasLoadedPreferences.current) {
+      hasLoadedPreferences.current = true;
+
+      // Apply chat preferences
+      if (preferences.responseStyle) {
+        setResponseStyle(preferences.responseStyle);
+      }
+      if (typeof preferences.useName === "boolean") {
+        setUseName(preferences.useName);
+      }
+      if (typeof preferences.useMemory === "boolean") {
+        setUseMemory(preferences.useMemory);
+      }
+
+      // Apply voice preferences
+      if (preferences.autoPlayVoice !== undefined) {
+        setVoiceEnabled(preferences.autoPlayVoice);
+      }
+    }
+  }, [preferences]);
+
+  // Save chat preferences when they change
+  useEffect(() => {
+    if (!hasLoadedPreferences.current) return;
+
+    const timer = setTimeout(async () => {
+      // Update preferences manager
+      await updatePreferences({
+        responseStyle,
+        useName,
+        useMemory,
+        autoPlayVoice: voiceEnabled,
       });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [responseStyle, useName, useMemory, voiceEnabled, updatePreferences]);
+
+  // Load chat history from backend
+  const loadChatHistory = async () => {
+    try {
+      const res = await fetchWithAuth(
+        `${API_BASE_URL}/api/chat`,
+        { method: "GET" },
+        API_BASE_URL,
+      );
 
       const data = await res.json();
 
       if (res.ok) {
-        setMessages(data.messages.length ? data.messages : [
-          { role: "ai", content: "Hi, I'm here for you. How are you feeling today?" }
+        setMessages(
+          data.messages.length
+            ? data.messages
+            : [
+                {
+                  role: "ai",
+                  content: "Hi, I'm here for you. How are you feeling today?",
+                },
+              ],
+        );
+      } else {
+        // Show welcome message if history load fails (e.g. expired session)
+        setMessages([
+          {
+            role: "ai",
+            content: "Hi, I'm here for you. How are you feeling today?",
+          },
         ]);
       }
-    } catch (error) {
+    } catch {
       console.log("Error loading chat");
     }
   };
@@ -51,107 +133,319 @@ export default function AICompanion() {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isSending) return;
 
-    const token = localStorage.getItem("token");
-    if (!token) return;
+    const userInput = input.trim();
+    const pendingId = `pending-${Date.now()}`;
+    setIsSending(true);
+    setInput("");
 
-    const userMessage = { role: "user", content: input };
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    const userMessage = { role: "user", content: userInput };
+    setMessages((prev) => [
+      ...prev,
+      userMessage,
+      { role: "ai", content: "Thinking...", _pendingId: pendingId },
+    ]);
 
-    const lowerInput = input.toLowerCase();
-    const isDanger = dangerWords.some(word => lowerInput.includes(word));
+    let aiResponseText = "I am here with you. Could you share a little more?";
 
-    let aiResponse;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 18000);
 
-    if (isDanger) {
-      aiResponse = {
-        role: "ai",
-        content:
-          "I'm really sorry you're feeling this way. Please contact emergency services or a crisis hotline immediately.\n\n🇺🇸 988 Suicide & Crisis Lifeline\n🌍 Text HOME to 741741"
-      };
-    } else if (lowerInput.includes("sad")) {
-      aiResponse = {
-        role: "ai",
-        content: "I'm sorry you're feeling sad. Would you like to share what's bothering you?"
-      };
-    } else if (lowerInput.includes("happy")) {
-      aiResponse = {
-        role: "ai",
-        content: "That's wonderful to hear. What made your day better?"
-      };
-    } else {
-      aiResponse = {
-        role: "ai",
-        content: "Tell me more about how you're feeling."
-      };
+      // Send plaintext to chatbot — it needs raw text for emotion detection.
+      // Chat history is encrypted separately when persisted below.
+      const chatbotRes = await fetchWithAuth(
+        `${API_BASE_URL}/api/chatbot`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            content: userInput,
+            session_id: chatSessionId,
+            style: responseStyle,
+            use_name: useName,
+            use_memory: useMemory,
+          }),
+          signal: controller.signal,
+        },
+        API_BASE_URL,
+      );
+
+      clearTimeout(timeoutId);
+
+      let chatbotData = {};
+      try {
+        chatbotData = await chatbotRes.json();
+      } catch {
+        chatbotData = {};
+      }
+
+      if (chatbotRes.ok) {
+        if (chatbotData.session_id) {
+          setChatSessionId(chatbotData.session_id);
+        }
+        aiResponseText =
+          chatbotData.response ||
+          "I hear you. Thank you for sharing that with me.";
+      } else {
+        aiResponseText =
+          "I am having trouble connecting right now. Please try again.";
+      }
+    } catch {
+      aiResponseText =
+        "I am having trouble connecting right now. Please try again.";
     }
 
-    const finalMessages = [...updatedMessages, aiResponse];
-    setTimeout(() => {
-      setMessages(finalMessages);
-    }, 600);
+    const aiResponse = { role: "ai", content: aiResponseText };
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg._pendingId === pendingId
+          ? { role: "ai", content: aiResponseText }
+          : msg,
+      ),
+    );
 
-    // Save updated chat to backend
-    await fetch("http://localhost:5000/api/chat", {
-        method: "POST",
-        headers: {
+    // Speak AI response if voice is enabled
+    if (voiceEnabled) {
+      try {
+        // Detect emotion from AI response for prosody
+        const emotionKeywords = {
+          happy: ["happy", "joy", "wonderful", "great", "amazing"],
+          calm: ["calm", "relax", "peaceful", "breathe", "here"],
+          supportive: ["here", "support", "help", "care", "understand"],
+          curious: ["wondering", "interested", "curious"],
+        };
+
+        let detectedEmotion = "neutral";
+        const lowerText = aiResponseText.toLowerCase();
+
+        for (const [emotion, keywords] of Object.entries(emotionKeywords)) {
+          if (keywords.some((kw) => lowerText.includes(kw))) {
+            detectedEmotion = emotion;
+            break;
+          }
+        }
+
+        await speak(aiResponseText, detectedEmotion);
+      } catch (voiceErr) {
+        console.error("Voice synthesis error:", voiceErr);
+        // Continue without voice - non-blocking
+      }
+    }
+
+    try {
+      // Encrypt and save user message
+      let encryptedUserMessage = userMessage;
+      try {
+        const key = await getEncryptionKey("mindsafe:chat");
+        const encryptedContent = await createEncryptedEnvelope(
+          userMessage.content,
+          key,
+          "mindsafe:chat",
+        );
+        encryptedUserMessage = {
+          role: userMessage.role,
+          content: encryptedContent,
+        };
+      } catch (encryptErr) {
+        console.error("Encryption warning for user message:", encryptErr);
+      }
+
+      await fetchWithAuth(
+        `${API_BASE_URL}/api/chat`,
+        {
+          method: "POST",
+          headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(encryptedUserMessage),
         },
-        body: JSON.stringify(userMessage)
-    });
+        API_BASE_URL,
+      );
 
-    // Save AI message
-    await fetch("http://localhost:5000/api/chat", {
-        method: "POST",
-        headers: {
+      // Encrypt and save AI response
+      let encryptedAiResponse = { role: "ai", content: aiResponseText };
+      try {
+        const key = await getEncryptionKey("mindsafe:chat");
+        const encryptedContent = await createEncryptedEnvelope(
+          aiResponseText,
+          key,
+          "mindsafe:chat",
+        );
+        encryptedAiResponse = {
+          role: "ai",
+          content: encryptedContent,
+        };
+      } catch (encryptErr) {
+        console.error("Encryption warning for AI response:", encryptErr);
+      }
+
+      await fetchWithAuth(
+        `${API_BASE_URL}/api/chat`,
+        {
+          method: "POST",
+          headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(encryptedAiResponse),
         },
-        body: JSON.stringify(aiResponse)
-    });
-
-    setInput("");
+        API_BASE_URL,
+      );
+    } catch {
+      // Non-blocking persistence failure; keep UI responsive
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
-    <div className="flex flex-col h-[85vh]">
-      <h1 className="text-4xl font-bold mb-6">AI Companion</h1>
+    <div className="flex h-[calc(100vh-1px)] flex-col bg-slate-950 p-8 md:p-10">
+      <h1 className="mb-6 text-3xl font-bold text-slate-100">
+        🤖 AI Companion
+      </h1>
 
-      <div className="flex-1 overflow-y-auto bg-white/5 p-6 rounded-2xl border border-white/10 space-y-4">
+      <div className="mb-4 flex items-center gap-3">
+        <label className="text-xs font-medium uppercase tracking-wide text-slate-400">
+          Response Style
+        </label>
+        <select
+          value={responseStyle}
+          onChange={(e) => setResponseStyle(e.target.value)}
+          className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500"
+        >
+          <option value="warm">Warm</option>
+          <option value="balanced">Balanced</option>
+          <option value="concise">Concise</option>
+        </select>
+
+        <label className="ml-3 flex items-center gap-2 text-xs text-slate-300">
+          <input
+            type="checkbox"
+            checked={useName}
+            onChange={(e) => setUseName(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-500 bg-slate-800 accent-cyan-500"
+          />
+          Use my name
+        </label>
+
+        <label className="flex items-center gap-2 text-xs text-slate-300">
+          <input
+            type="checkbox"
+            checked={useMemory}
+            onChange={(e) => setUseMemory(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-500 bg-slate-800 accent-cyan-500"
+          />
+          Use memory cues
+        </label>
+
+        {/* Voice Controls */}
+        <label className="ml-auto flex items-center gap-2 text-xs text-slate-300">
+          <input
+            type="checkbox"
+            checked={voiceEnabled}
+            onChange={(e) => {
+              setVoiceEnabled(e.target.checked);
+              if (!e.target.checked) stop();
+            }}
+            className="h-4 w-4 rounded border-slate-500 bg-slate-800 accent-cyan-500"
+          />
+          🔊 Voice
+        </label>
+
+        <button
+          onClick={() => setShowVoiceSettings(!showVoiceSettings)}
+          className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-cyan-500 hover:text-cyan-400"
+        >
+          ⚙️ Voice Settings
+        </button>
+
+        <span
+          className={`text-xs font-medium ${
+            prefsSaveState === "saving"
+              ? "text-cyan-300"
+              : prefsSaveState === "saved"
+                ? "text-emerald-300"
+                : prefsSaveState === "error"
+                  ? "text-rose-300"
+                  : "text-slate-500"
+          }`}
+        >
+          {prefsSaveState === "saving"
+            ? "Saving..."
+            : prefsSaveState === "saved"
+              ? "Saved"
+              : prefsSaveState === "error"
+                ? "Save failed"
+                : ""}
+        </span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto rounded-2xl border border-slate-700/50 bg-slate-900/70 p-6 backdrop-blur-xl space-y-4">
         {messages.map((msg, index) => (
           <div
             key={index}
-            className={`max-w-xl p-4 rounded-2xl ${
+            className={`max-w-xl rounded-2xl px-4 py-3 text-sm leading-relaxed ${
               msg.role === "user"
-                ? "ml-auto bg-purple-700"
-                : "bg-purple-900/40"
+                ? "ml-auto bg-cyan-700 text-white"
+                : "bg-slate-800 text-slate-200"
             }`}
           >
             {msg.content}
+            {msg.role === "ai" && isPlaying && currentPhoneme && (
+              <div className="mt-2 text-xs text-cyan-400">
+                🎤 Speaking... ({currentPhoneme})
+              </div>
+            )}
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="flex mt-4 gap-4">
+      <div className="mt-4 flex gap-3">
         <input
           type="text"
           placeholder="Type your message..."
-          className="flex-1 p-3 bg-black/50 rounded-lg border border-white/20"
+          className="flex-1 rounded-xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-400 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
         />
         <button
           onClick={handleSend}
-          className="px-6 py-3 bg-purple-600 rounded-lg hover:bg-purple-500 transition"
+          disabled={isSending}
+          className="rounded-xl bg-cyan-600 px-6 py-3 text-sm font-semibold transition hover:bg-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
         >
-          Send
+          {isSending ? "Sending..." : "Send"}
         </button>
       </div>
+
+      {/* Voice Settings Modal */}
+      {showVoiceSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-950 p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-100">
+                Voice Settings
+              </h2>
+              <button
+                onClick={() => setShowVoiceSettings(false)}
+                className="text-slate-400 hover:text-slate-200"
+              >
+                ✕
+              </button>
+            </div>
+            <VoiceSettings
+              showPreview={true}
+              onSettingsChange={(settings) => {
+                // Settings are applied in real-time by VoicePlayback hook
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

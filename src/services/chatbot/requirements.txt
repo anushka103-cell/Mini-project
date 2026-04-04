@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+requests
+pydantic
+transformers
+groq
+chromadb
+sentence-transformers
+redis

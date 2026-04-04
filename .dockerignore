@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+.venv
+cache
+Agent_log
+*.md
+!README.md
+.env.local
+.env.*.local

@@ -1,0 +1,123 @@
+{
+  "info": {
+    "name": "MindSafe Mood Tracking API",
+    "description": "Postman collection for mood tracking backend service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": {
+      "major": 1,
+      "minor": 0,
+      "patch": 0
+    }
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8002"
+    },
+    {
+      "key": "userId",
+      "value": "user-123"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "Log Daily Mood",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user_id\": \"{{userId}}\",\n  \"mood_score\": 6,\n  \"mood_label\": \"neutral\",\n  \"notes\": \"Work pressure but manageable\",\n  \"emotion_scores\": {\n    \"anxiety\": 0.4,\n    \"calm\": 0.5\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/moods/log",
+          "host": ["{{baseUrl}}"],
+          "path": ["moods", "log"]
+        }
+      }
+    },
+    {
+      "name": "Get Mood Logs",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/moods/{{userId}}/logs?limit=90",
+          "host": ["{{baseUrl}}"],
+          "path": ["moods", "{{userId}}", "logs"],
+          "query": [
+            {
+              "key": "limit",
+              "value": "90"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Trend Analysis",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/moods/{{userId}}/trends?days=30",
+          "host": ["{{baseUrl}}"],
+          "path": ["moods", "{{userId}}", "trends"],
+          "query": [
+            {
+              "key": "days",
+              "value": "30"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Weekly Mental Health Score",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/moods/{{userId}}/weekly-score",
+          "host": ["{{baseUrl}}"],
+          "path": ["moods", "{{userId}}", "weekly-score"]
+        }
+      }
+    },
+    {
+      "name": "Get Visualization Data",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/moods/{{userId}}/visualization?days=90",
+          "host": ["{{baseUrl}}"],
+          "path": ["moods", "{{userId}}", "visualization"],
+          "query": [
+            {
+              "key": "days",
+              "value": "90"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

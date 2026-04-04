@@ -1,0 +1,318 @@
+# ============================================================
+# MindSafe — Production Docker Compose (local simulation)
+# ============================================================
+# Mirrors the AWS production topology using local containers.
+# Use for staging validation before pushing to ECS.
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d --build
+# ============================================================
+
+services:
+  # ─── PostgreSQL (mirrors RDS) ───
+  postgres:
+    image: postgres:15-alpine
+    container_name: mindsafe_prod_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mindsafe_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: mindsafe_db
+    volumes:
+      - pg_prod_data:/var/lib/postgresql/data
+      - ./src/deploy/postgres_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./src/deploy/mood_tracking_schema.sql:/docker-entrypoint-initdb.d/02-mood.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mindsafe_admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [mindsafe]
+    restart: unless-stopped
+
+  # ─── Redis (mirrors ElastiCache) ───
+  redis:
+    image: redis:7-alpine
+    container_name: mindsafe_prod_redis
+    command: >
+      redis-server
+        --appendonly yes
+        --requirepass ${REDIS_PASSWORD}
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [mindsafe]
+    restart: unless-stopped
+
+  # ─── RabbitMQ (mirrors Amazon MQ) ───
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: mindsafe_prod_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${MQ_USER:-mindsafe_mq}
+      RABBITMQ_DEFAULT_PASS: ${MQ_PASSWORD}
+    volumes:
+      - mq_prod_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [mindsafe]
+    restart: unless-stopped
+
+  # ─── API Gateway ───
+  api_gateway:
+    build:
+      context: .
+      dockerfile: src/docker/Dockerfile.api_gateway
+    env_file: [.env.production]
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      USE_POSTGRES: "true"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mindsafe_admin}:${POSTGRES_PASSWORD}@postgres:5432/mindsafe_db
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      RABBITMQ_URL: amqp://${MQ_USER:-mindsafe_mq}:${MQ_PASSWORD}@rabbitmq:5672/
+      CORS_ORIGINS: https://${DOMAIN_NAME:-localhost:3000}
+      EMOTION_DETECTION_URL: http://emotion_detection:8001
+      MOOD_ANALYTICS_URL: http://mood_analytics:8002
+      CRISIS_DETECTION_URL: http://crisis_detection:8003
+      CHATBOT_SERVICE_URL: http://chatbot:8004
+      RECOMMENDATION_SERVICE_URL: http://recommendation:8005
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      chatbot: { condition: service_healthy }
+    networks: [mindsafe]
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+      resources:
+        limits: { cpus: "1", memory: 1G }
+        reservations: { cpus: "0.5", memory: 512M }
+
+  # ─── Chatbot ───
+  chatbot:
+    build:
+      context: .
+      dockerfile: src/docker/Dockerfile.chatbot
+    environment:
+      PORT: 8004
+      PYTHON_ENV: production
+      LOG_LEVEL: WARNING
+      USE_NLP_CRISIS_CLASSIFIER: "false"
+      EMOTION_SERVICE_URL: http://emotion_detection:8001
+      RECOMMENDATION_SERVICE_URL: http://recommendation:8005
+      HF_HOME: /cache/huggingface
+      TRANSFORMERS_CACHE: /cache/huggingface
+    volumes:
+      - ./cache/huggingface:/cache/huggingface
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks: [mindsafe]
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+      resources:
+        limits: { cpus: "1", memory: 2G }
+        reservations: { cpus: "0.5", memory: 1G }
+
+  # ─── Emotion Detection ───
+  emotion_detection:
+    build:
+      context: .
+      dockerfile: src/docker/Dockerfile.emotion_detection
+    container_name: mindsafe_prod_emotion
+    environment:
+      PORT: 8001
+      PYTHON_ENV: production
+      LOG_LEVEL: WARNING
+      MODEL_DEVICE: cpu
+      HF_HOME: /cache/huggingface
+      TRANSFORMERS_CACHE: /cache/huggingface
+    volumes:
+      - ./cache/huggingface:/cache/huggingface
+    networks: [mindsafe]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "2", memory: 4G }
+        reservations: { cpus: "1", memory: 2G }
+
+  # ─── Mood Analytics ───
+  mood_analytics:
+    build:
+      context: .
+      dockerfile: src/docker/Dockerfile.mood_analytics
+    container_name: mindsafe_prod_mood
+    environment:
+      PORT: 8002
+      PYTHON_ENV: production
+      LOG_LEVEL: WARNING
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mindsafe_admin}:${POSTGRES_PASSWORD}@postgres:5432/mindsafe_db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [mindsafe]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 1G }
+        reservations: { cpus: "0.5", memory: 512M }
+
+  # ─── Crisis Detection ───
+  crisis_detection:
+    build:
+      context: .
+      dockerfile: src/docker/Dockerfile.crisis_detection
+    container_name: mindsafe_prod_crisis
+    environment:
+      PORT: 8003
+      PYTHON_ENV: production
+      LOG_LEVEL: WARNING
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks: [mindsafe]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 1G }
+        reservations: { cpus: "0.25", memory: 256M }
+
+  # ─── Queue Worker ───
+  queue_worker:
+    build:
+      context: .
+      dockerfile: src/docker/Dockerfile.queue_worker
+    container_name: mindsafe_prod_worker
+    env_file: [.env.production]
+    environment:
+      RABBITMQ_URL: amqp://${MQ_USER:-mindsafe_mq}:${MQ_PASSWORD}@rabbitmq:5672/
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mindsafe_admin}:${POSTGRES_PASSWORD}@postgres:5432/mindsafe_db
+      EMAIL_SERVICE: resend
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    networks: [mindsafe]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 512M }
+        reservations: { cpus: "0.25", memory: 256M }
+
+  # ─── Recommendation Service ───
+  recommendation:
+    build:
+      context: .
+      dockerfile: src/docker/Dockerfile.recommendation
+    container_name: mindsafe_prod_recommendation
+    environment:
+      PORT: 8005
+      PYTHON_ENV: production
+      LOG_LEVEL: WARNING
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks: [mindsafe]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 512M }
+        reservations: { cpus: "0.25", memory: 256M }
+
+  # ─── Frontend ───
+  frontend:
+    build:
+      context: .
+      dockerfile: src/docker/Dockerfile.frontend
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: https://${DOMAIN_NAME:-localhost:5000}
+      NEXT_PUBLIC_WS_URL: wss://${DOMAIN_NAME:-localhost:5000}
+    depends_on: [api_gateway]
+    networks: [mindsafe]
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+      resources:
+        limits: { cpus: "0.5", memory: 1G }
+        reservations: { cpus: "0.25", memory: 512M }
+
+  # ─── Nginx Reverse Proxy (simulates ALB) ───
+  nginx:
+    image: nginx:alpine
+    container_name: mindsafe_prod_nginx
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/certs:/etc/nginx/certs:ro
+    depends_on: [frontend, api_gateway]
+    networks: [mindsafe]
+    restart: unless-stopped
+
+  # ─── Prometheus ───
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mindsafe_prod_prometheus
+    volumes:
+      - ./src/deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_prod_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+    networks: [mindsafe]
+
+  # ─── Grafana ───
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mindsafe_prod_grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-changeme}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - grafana_prod_data:/var/lib/grafana
+    depends_on: [prometheus]
+    networks: [mindsafe]
+
+volumes:
+  pg_prod_data:
+  redis_prod_data:
+  mq_prod_data:
+  prometheus_prod_data:
+  grafana_prod_data:
+
+networks:
+  mindsafe:
+    driver: bridge

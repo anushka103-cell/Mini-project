@@ -1,0 +1,1270 @@
+openapi: 3.1.0
+info:
+  title: MindSafe Mental Health Platform API
+  version: 1.0.0
+  description: |
+    Privacy-first AI mental health platform. All endpoints under `/api` are served by the
+    API Gateway (Express) which proxies ML operations to internal Python microservices.
+
+    ## Authentication
+    Most endpoints require a Bearer token in the `Authorization` header.
+    Obtain tokens via `/api/login` or `/api/auth/google`. Access tokens expire in 15 minutes;
+    use `/api/refresh-token` to get a new pair.
+
+    ## Error Format
+    All errors return `{ "message": "..." }` with an appropriate HTTP status code.
+  contact:
+    name: MindSafe Team
+  license:
+    name: Private
+
+servers:
+  - url: http://localhost:5000
+    description: Local development
+  - url: https://mindsafe-api.onrender.com
+    description: Free-tier production (Render)
+
+tags:
+  - name: Health
+    description: Service health checks
+  - name: Authentication
+    description: Registration, login, token management
+  - name: Chatbot
+    description: AI companion interaction
+  - name: Mood Tracking
+    description: Mood logging and analytics
+  - name: Emotion Detection
+    description: Text emotion and sentiment analysis
+  - name: Crisis Detection
+    description: Crisis identification and resources
+  - name: Profile
+    description: User profile management
+  - name: Avatar
+    description: 3D avatar management
+
+# ══════════════════════ SECURITY ══════════════════════
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token from `/api/login`. Expires in 15 minutes.
+
+  schemas:
+    # ── Common ──
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          example: "Invalid or expired token"
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+
+    # ── Auth ──
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          minLength: 8
+          example: MySecureP@ss1
+        name:
+          type: string
+          example: Priya Sharma
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Legacy alias for accessToken
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: string
+          example: "15m"
+        anonymizedUserId:
+          type: string
+          format: uuid
+        analyticsSubjectId:
+          type: string
+        role:
+          type: string
+          enum: [user, psychologist, admin]
+
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+
+    VerifyEmailRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 16
+
+    MobileOtpRequest:
+      type: object
+      required: [mobile]
+      properties:
+        mobile:
+          type: string
+          pattern: '^\+?\d{10,15}$'
+          example: "+919876543210"
+
+    OtpLoginRequest:
+      type: object
+      required: [mobile, otp]
+      properties:
+        mobile:
+          type: string
+        otp:
+          type: string
+          pattern: '^\d{6}$'
+          example: "123456"
+
+    # ── Chat ──
+    ChatbotRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          maxLength: 5000
+          example: "I've been feeling really anxious about my exams"
+        session_id:
+          type: string
+          nullable: true
+          description: Existing session ID to continue a conversation
+        style:
+          type: string
+          enum: [warm, balanced, concise]
+          default: balanced
+        use_name:
+          type: boolean
+          default: true
+          description: Whether the bot addresses user by name
+        use_memory:
+          type: boolean
+          default: true
+          description: Whether the bot remembers conversation context
+
+    ChatbotResponse:
+      type: object
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        message_id:
+          type: string
+        response:
+          type: string
+          example: "I hear you, Priya. Exam anxiety is really common..."
+        emotion_detected:
+          type: string
+          example: anxiety
+        emotional_intensity:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        crisis_level:
+          type: string
+          enum: [low, medium, high, critical]
+        crisis_resources:
+          type: array
+          items:
+            type: object
+        coping_strategies:
+          type: array
+          items:
+            type: string
+        requires_escalation:
+          type: boolean
+        timestamp:
+          type: string
+          format: date-time
+
+    ChatMessageRequest:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [user, ai, assistant, system]
+        content:
+          type: string
+          maxLength: 5000
+        encryptedContent:
+          type: object
+          description: Client-encrypted envelope (alternative to plaintext content)
+          properties:
+            encrypted:
+              type: boolean
+            ciphertext:
+              type: string
+
+    # ── Mood ──
+    MoodLogRequest:
+      type: object
+      required: [mood_score]
+      properties:
+        mood_score:
+          type: integer
+          minimum: 1
+          maximum: 10
+          example: 7
+        mood_label:
+          type: string
+          example: happy
+        notes:
+          type: string
+          nullable: true
+          example: "Had a good therapy session today"
+        emotion_scores:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: number
+          example: { "joy": 0.8, "sadness": 0.1 }
+        logged_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    MoodLogResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: string
+        logged_date:
+          type: string
+          format: date
+        mood_score:
+          type: integer
+        mood_label:
+          type: string
+        notes:
+          type: string
+        emotion_scores:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TrendAnalysisResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        window_days:
+          type: integer
+        trend_direction:
+          type: string
+          enum: [improving, stable, declining]
+        slope:
+          type: number
+        points:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              score:
+                type: number
+        top_emotions:
+          type: array
+          items:
+            type: object
+
+    WeeklyScoreResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        week_start:
+          type: string
+          format: date
+        week_end:
+          type: string
+          format: date
+        entries_count:
+          type: integer
+        average_mood:
+          type: number
+        consistency_ratio:
+          type: number
+        stability_score:
+          type: number
+        weekly_mental_health_score:
+          type: number
+
+    VisualizationResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+        mood_scores:
+          type: array
+          items:
+            type: number
+        moving_avg_7d:
+          type: array
+          items:
+            type: number
+        weekly_scores:
+          type: array
+          items:
+            type: object
+        emotion_series:
+          type: object
+
+    # ── Emotion Detection ──
+    AnalyzeTextRequest:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+          example: "I feel so hopeless and I don't know what to do"
+        user_id:
+          type: string
+        conversation_id:
+          type: string
+
+    TextAnalysisResponse:
+      type: object
+      properties:
+        text:
+          type: string
+        sentiment:
+          type: object
+          properties:
+            sentiment:
+              type: string
+              enum: [VERY_NEGATIVE, NEGATIVE, NEUTRAL, POSITIVE, VERY_POSITIVE]
+            score:
+              type: number
+            confidence:
+              type: number
+        emotion:
+          type: object
+          properties:
+            emotion:
+              type: string
+              enum: [JOY, SADNESS, ANGER, FEAR, SURPRISE, DISGUST, TRUST, ANTICIPATION]
+            confidence:
+              type: number
+            all_emotions:
+              type: object
+              additionalProperties:
+                type: number
+        crisis_detection:
+          type: object
+          properties:
+            is_crisis:
+              type: boolean
+            crisis_level:
+              type: string
+              enum: [LOW, MEDIUM, HIGH, CRITICAL]
+            crisis_keywords:
+              type: array
+              items:
+                type: string
+            risk_score:
+              type: number
+            reason:
+              type: string
+        language:
+          type: string
+        processing_time_ms:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+
+    # ── Crisis ──
+    CrisisDetectionRequest:
+      type: object
+      required: [user_id, indicators]
+      properties:
+        user_id:
+          type: string
+        indicators:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              value:
+                type: string
+              severity:
+                type: string
+                enum: [low, medium, high, critical]
+        context:
+          type: string
+        recent_mood_trend:
+          type: string
+
+    CrisisResponsePlan:
+      type: object
+      properties:
+        crisis_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+        detected_level:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        actions_taken:
+          type: array
+          items:
+            type: string
+        resources_provided:
+          type: array
+          items:
+            type: object
+        notifications_sent:
+          type: array
+          items:
+            type: string
+        escalation_status:
+          type: string
+        follow_up_scheduled:
+          type: string
+          format: date-time
+        timestamp:
+          type: string
+          format: date-time
+
+    # ── Profile ──
+    ProfileRequest:
+      type: object
+      required: [fullName, email, mobile]
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: "Priya Sharma"
+        email:
+          type: string
+          format: email
+        mobile:
+          type: string
+          pattern: '^\+?\d{10,15}$'
+        anonymousName:
+          type: string
+          maxLength: 80
+        anonymousMode:
+          type: boolean
+
+    # ── Avatar ──
+    AvatarRequest:
+      type: object
+      required: [avatar3D]
+      properties:
+        avatar3D:
+          type: string
+          format: uri
+          maxLength: 2048
+          example: "https://models.readyplayer.me/abc123.glb"
+
+# ══════════════════════ PATHS ══════════════════════
+paths:
+  # ── Health ──
+  /:
+    get:
+      tags: [Health]
+      summary: Root
+      operationId: getRoot
+      responses:
+        "200":
+          description: Service info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "MindSafe Backend Running"
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: getHealth
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  # ══════════ AUTHENTICATION ══════════
+  /api/register:
+    post:
+      tags: [Authentication]
+      summary: Register a new user
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User created. Verification email sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Registration successful. Check your email."
+                  userId:
+                    type: string
+                    format: uuid
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/login:
+    post:
+      tags: [Authentication]
+      summary: Login with email and password
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/verify-email:
+    post:
+      tags: [Authentication]
+      summary: Verify email with token
+      operationId: verifyEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyEmailRequest"
+      responses:
+        "200":
+          description: Email verified
+        "400":
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/email/request-verification:
+    post:
+      tags: [Authentication]
+      summary: Resend email verification
+      operationId: requestEmailVerification
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Verification email sent
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/mobile/request-otp:
+    post:
+      tags: [Authentication]
+      summary: Request OTP for mobile login
+      operationId: requestMobileOtp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MobileOtpRequest"
+      responses:
+        "200":
+          description: OTP sent
+        "400":
+          description: Invalid mobile number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/mobile/login-otp:
+    post:
+      tags: [Authentication]
+      summary: Login with mobile OTP
+      operationId: loginWithMobileOtp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpLoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          description: Invalid OTP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/mobile/verify-otp:
+    post:
+      tags: [Authentication]
+      summary: Verify mobile number with OTP (authenticated)
+      operationId: verifyMobileOtp
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpLoginRequest"
+      responses:
+        "200":
+          description: Mobile verified
+        "400":
+          description: Invalid OTP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/refresh-token:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: New token pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/logout:
+    post:
+      tags: [Authentication]
+      summary: Logout (revoke session)
+      operationId: logout
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Logged out
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/auth/google:
+    get:
+      tags: [Authentication]
+      summary: Initiate Google OAuth login
+      operationId: googleAuth
+      description: Redirects browser to Google consent screen. Not a JSON API.
+      responses:
+        "302":
+          description: Redirect to Google
+        "503":
+          description: Google OAuth not configured
+
+  /api/auth/google/callback:
+    get:
+      tags: [Authentication]
+      summary: Google OAuth callback
+      operationId: googleCallback
+      description: |
+        Google redirects here after consent. On success, redirects to
+        `{frontend}/auth/callback?token={accessToken}`.
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to frontend with token
+
+  # ══════════ CHATBOT ══════════
+  /api/chatbot:
+    post:
+      tags: [Chatbot]
+      summary: Send message to AI companion
+      operationId: askChatbot
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatbotRequest"
+            examples:
+              basic:
+                summary: Simple message
+                value:
+                  content: "I've been feeling really anxious about my exams"
+              with_session:
+                summary: Continue conversation
+                value:
+                  content: "What coping strategies do you recommend?"
+                  session_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  style: warm
+      responses:
+        "200":
+          description: Chatbot response with emotion analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatbotResponse"
+              example:
+                session_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                response: "I hear you. Exam anxiety is really common..."
+                emotion_detected: anxiety
+                emotional_intensity: 0.72
+                crisis_level: low
+                coping_strategies:
+                  - "Try the 4-7-8 breathing technique"
+                  - "Break study sessions into 25-minute blocks"
+                requires_escalation: false
+        "400":
+          description: content is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: Chatbot service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "504":
+          description: Chatbot request timed out (20s)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/chat:
+    post:
+      tags: [Chatbot]
+      summary: Save a chat message
+      operationId: addChatMessage
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageRequest"
+      responses:
+        "200":
+          description: Message saved
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      tags: [Chatbot]
+      summary: Get chat message history
+      operationId: getChatMessages
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Array of chat messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        role:
+                          type: string
+                        content:
+                          type: string
+                        timestamp:
+                          type: string
+                          format: date-time
+
+  # ══════════ MOOD TRACKING ══════════
+  /api/moods/log:
+    post:
+      tags: [Mood Tracking]
+      summary: Log today's mood
+      operationId: logMood
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoodLogRequest"
+            example:
+              mood_score: 7
+              mood_label: happy
+              notes: "Had a good therapy session today"
+              emotion_scores:
+                joy: 0.8
+                sadness: 0.1
+      responses:
+        "201":
+          description: Mood logged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MoodLogResponse"
+        "400":
+          description: mood_score must be between 1 and 10
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: Mood service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/moods/logs:
+    get:
+      tags: [Mood Tracking]
+      summary: Get mood history
+      operationId: getMoodLogs
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+            default: 30
+      responses:
+        "200":
+          description: Array of mood logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MoodLogResponse"
+
+  /api/moods/trends:
+    get:
+      tags: [Mood Tracking]
+      summary: Get mood trend analysis
+      operationId: getMoodTrends
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            minimum: 7
+            maximum: 365
+            default: 30
+      responses:
+        "200":
+          description: Trend analysis with direction and slope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrendAnalysisResponse"
+
+  /api/moods/weekly-score:
+    get:
+      tags: [Mood Tracking]
+      summary: Get weekly mental health score
+      operationId: getWeeklyScore
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Weekly composite score
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeeklyScoreResponse"
+
+  /api/moods/visualization:
+    get:
+      tags: [Mood Tracking]
+      summary: Get chart-ready visualization data
+      operationId: getMoodVisualization
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            minimum: 14
+            maximum: 365
+            default: 90
+      responses:
+        "200":
+          description: Labels, scores, moving averages, emotion series
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisualizationResponse"
+
+  # ══════════ PROFILE ══════════
+  /api/profile:
+    get:
+      tags: [Profile]
+      summary: Get user profile
+      operationId: getProfile
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile:
+                    type: object
+                    properties:
+                      fullName:
+                        type: string
+                      email:
+                        type: string
+                      mobile:
+                        type: string
+                      anonymousName:
+                        type: string
+                      anonymousMode:
+                        type: boolean
+    post:
+      tags: [Profile]
+      summary: Create or update profile
+      operationId: upsertProfile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileRequest"
+      responses:
+        "200":
+          description: Profile saved
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Profile]
+      summary: Delete account and all data
+      operationId: deleteProfile
+      security:
+        - BearerAuth: []
+      description: |
+        Permanently deletes user account, profile, chat history, mood data, and all
+        associated records. This action is irreversible (GDPR right to erasure).
+      responses:
+        "200":
+          description: Account deleted
+
+  # ══════════ AVATAR ══════════
+  /api/avatar:
+    get:
+      tags: [Avatar]
+      summary: Get user's 3D avatar
+      operationId: getAvatar
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Avatar data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  avatar3D:
+                    type: string
+                    format: uri
+    post:
+      tags: [Avatar]
+      summary: Save 3D avatar URL
+      operationId: saveAvatar
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvatarRequest"
+      responses:
+        "200":
+          description: Avatar saved
+        "400":
+          description: Invalid avatar URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ══════════ INTERNAL MICROSERVICES (Direct) ══════════
+  # These are internal services, not exposed through ALB in production.
+  # Documented for development and inter-service communication.
+
+  # ── Emotion Detection (internal :8001) ──
+  /analyze:
+    post:
+      tags: [Emotion Detection]
+      summary: Analyze text for emotion, sentiment, and crisis signals
+      operationId: analyzeText
+      description: |
+        **Internal service** (port 8001). Not exposed to clients directly.
+        Called by the chatbot service and API gateway internally.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeTextRequest"
+      responses:
+        "200":
+          description: Full text analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TextAnalysisResponse"
+              example:
+                text: "I feel so hopeless and I don't know what to do"
+                sentiment:
+                  sentiment: VERY_NEGATIVE
+                  score: -0.89
+                  confidence: 0.94
+                emotion:
+                  emotion: SADNESS
+                  confidence: 0.87
+                  all_emotions:
+                    SADNESS: 0.87
+                    FEAR: 0.45
+                    ANGER: 0.12
+                crisis_detection:
+                  is_crisis: true
+                  crisis_level: HIGH
+                  crisis_keywords: ["hopeless"]
+                  risk_score: 0.78
+                  reason: "Keyword 'hopeless' detected with negative sentiment"
+                processing_time_ms: 42.5
+
+  /batch-analyze:
+    post:
+      tags: [Emotion Detection]
+      summary: Batch analyze multiple texts
+      operationId: batchAnalyze
+      description: "**Internal service** (port 8001)."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [texts]
+              properties:
+                texts:
+                  type: array
+                  items:
+                    type: string
+                user_id:
+                  type: string
+      responses:
+        "200":
+          description: Array of analysis results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TextAnalysisResponse"
+
+  # ── Crisis Detection (internal :8003) ──
+  /detect:
+    post:
+      tags: [Crisis Detection]
+      summary: Detect crisis from indicators
+      operationId: detectCrisis
+      description: "**Internal service** (port 8003)."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CrisisDetectionRequest"
+      responses:
+        "200":
+          description: Crisis response plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CrisisResponsePlan"
+
+  /resources/{region}:
+    get:
+      tags: [Crisis Detection]
+      summary: Get emergency resources by region
+      operationId: getResources
+      description: "**Internal service** (port 8003)."
+      parameters:
+        - name: region
+          in: path
+          required: true
+          schema:
+            type: string
+            example: IN
+      responses:
+        "200":
+          description: Regional emergency resources
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  region:
+                    type: string
+                  resources:
+                    type: array
+                    items:
+                      type: object

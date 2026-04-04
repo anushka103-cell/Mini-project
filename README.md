@@ -1,36 +1,159 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# MindSafe — Privacy-First Mental Health Platform
 
-## Getting Started
+A Next.js + Python microservices platform providing AI companions, anonymous peer support, mood tracking, 3D avatars, and therapeutic games — all with end-to-end encryption.
 
-First, run the development server:
+## Architecture
+
+| Service           | Tech                   | Port | Path                              |
+| ----------------- | ---------------------- | ---- | --------------------------------- |
+| Frontend          | Next.js 16 (Turbopack) | 3000 | `src/app/`                        |
+| Backend API       | Node.js / Express      | 5000 | `src/backend/`                    |
+| Emotion Detection | Python / FastAPI       | 8001 | `src/services/emotion_detection/` |
+| Mood Analytics    | Python / FastAPI       | 8002 | `src/services/mood_analytics/`    |
+| Crisis Detection  | Python / FastAPI       | 8003 | `src/services/crisis_detection/`  |
+| Chatbot           | Python / FastAPI       | 8004 | `src/services/chatbot/`           |
+| Recommendations   | Python / FastAPI       | 8005 | `src/services/recommendation/`    |
+
+## Prerequisites
+
+- **Node.js** 18+
+- **Python** 3.10+
+- **PostgreSQL** (optional, in-memory store used by default)
+- **Groq API key** (for AI chatbot responses)
+
+## Quick Start
+
+### 1. Install dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Frontend + Backend (Node)
+npm install
+cd src/backend && npm install && cd ../..
+
+# Python microservices
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# macOS/Linux:
+source .venv/bin/activate
+
+pip install -r src/services/chatbot/requirements.txt
+pip install -r src/services/emotion_detection/requirements.txt
+pip install -r src/services/mood_analytics/requirements.txt
+pip install -r src/services/crisis_detection/requirements.txt
+pip install -r src/services/recommendation/requirements.txt
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure environment
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+Copy the template and fill in your values:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cp .env.free-tier.template .env
+```
 
-## Learn More
+Key variables:
 
-To learn more about Next.js, take a look at the following resources:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_WS_URL=ws://localhost:5000
+GROQ_API_KEY=your_groq_api_key
+JWT_SECRET=your_jwt_secret_min_32_chars
+JWT_REFRESH_SECRET=your_refresh_secret_min_32_chars
+DATABASE_URL=postgresql://user:pass@localhost:5432/mindsafe  # optional
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Start all services
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Run each in a separate terminal:
 
-## Deploy on Vercel
+```bash
+# Terminal 1 — Frontend (Next.js)
+npm run dev
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Terminal 2 — Backend API (Node.js)
+cd src/backend && node server.js
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Terminal 3 — Chatbot service (required for AI Companion)
+python src/services/chatbot/main.py
+
+# Terminal 4 — Emotion detection (optional, enhances chatbot)
+python src/services/emotion_detection/main.py
+
+# Terminal 5 — Other services (optional)
+python src/services/crisis_detection/main.py
+python src/services/mood_analytics/main.py
+python src/services/recommendation/main.py
+```
+
+### 4. Verify
+
+Open http://localhost:3000 — sign up, then try the AI Companion.
+
+Quick health checks:
+
+```bash
+curl http://localhost:3000        # Frontend
+curl http://localhost:5000/health  # Backend API
+curl http://localhost:8004/health  # Chatbot service
+```
+
+## Smoke Tests
+
+```bash
+npm run smoke:api             # API smoke tests (stack must be running)
+npm run smoke:api:compose     # Docker Compose + smoke tests
+npm run smoke:mood            # Mood API tests
+```
+
+## Docker Deployment
+
+```bash
+# Local
+docker compose up -d --build
+
+# Production
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+## Project Structure
+
+```
+src/
+├── app/              # Next.js pages and routes
+├── backend/          # Node.js Express API server
+├── components/       # React components
+├── hooks/            # Custom React hooks
+├── lib/              # Shared utilities and helpers
+├── services/         # Python FastAPI microservices
+│   ├── chatbot/          # AI companion (port 8004)
+│   ├── emotion_detection/ # NLP emotion analysis (port 8001)
+│   ├── mood_analytics/   # Mood tracking analytics (port 8002)
+│   ├── crisis_detection/ # Crisis detection (port 8003)
+│   └── recommendation/   # Recommendations (port 8005)
+├── deploy/           # Database schemas, Prometheus config
+└── docker/           # Dockerfiles for each service
+docs/                 # API docs, architecture, guides
+infra/                # Nginx, Terraform configs
+tests/                # Smoke and integration tests
+.github/              # Agent definitions (AGENTS.md, agent files)
+```
+
+## Troubleshooting
+
+| Problem                              | Fix                                                              |
+| ------------------------------------ | ---------------------------------------------------------------- |
+| Frontend stuck on "Compiling"        | Delete `.next/` folder and restart `npm run dev`                 |
+| "Trouble connecting" in AI Companion | Start the chatbot service: `python src/services/chatbot/main.py` |
+| 401 Unauthorized on API calls        | Sign up / log in first — all API routes require JWT auth         |
+| Python module not found              | Activate venv and install requirements for the specific service  |
+| Port already in use                  | Kill the process: `npx kill-port 3000` (or whichever port)       |
+
+## Docs
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Deployment Architecture](docs/DEPLOYMENT_ARCHITECTURE.md)
+- [Quick Start Guide](docs/QUICK_START_GUIDE.md)
+- [Quick Reference](docs/QUICK_REFERENCE.md)
+- [API Documentation](docs/api/REST-API.md)
+- [Encryption Implementation](docs/ENCRYPTION_IMPLEMENTATION.md)

@@ -1,0 +1,165 @@
+# ============================================================
+# Render Blueprint — MindSafe Free-Tier Deployment
+# ============================================================
+# Render.com free tier:
+#   - Web services: 750 hours/month (sleeps after 15 min idle)
+#   - PostgreSQL: free for 90 days, then $7/mo (use Neon instead)
+#   - Redis: not free (use Upstash instead)
+#
+# Push this repo to GitHub → connect in Render dashboard →
+# Render auto-discovers this file and creates all services.
+# ============================================================
+
+services:
+  # ─── API Gateway (Node.js) ───
+  - type: web
+    name: mindsafe-api
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: src/backend
+    buildCommand: npm ci
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "5000"
+      - key: USE_POSTGRES
+        value: "true"
+      - key: DATABASE_URL
+        sync: false  # Set manually (Neon connection string)
+      - key: REDIS_URL
+        sync: false  # Set manually (Upstash connection string)
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_EMAIL_VERIFICATION_SECRET
+        generateValue: true
+      - key: DATA_ENCRYPTION_KEY
+        generateValue: true
+      - key: DATA_HMAC_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false  # Set to your Vercel frontend URL
+      - key: CHATBOT_SERVICE_URL
+        sync: false  # Set to mindsafe-chatbot internal URL
+      - key: EMOTION_DETECTION_URL
+        sync: false
+      - key: MOOD_ANALYTICS_URL
+        sync: false
+      - key: CRISIS_DETECTION_URL
+        sync: false
+      - key: RABBITMQ_URL
+        sync: false  # Set manually (CloudAMQP URL)
+      - key: RESEND_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        sync: false
+
+  # ─── Chatbot Service (Python) ───
+  - type: web
+    name: mindsafe-chatbot
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: src/services/chatbot
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8004"
+      - key: PYTHON_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: WARNING
+      - key: USE_NLP_CRISIS_CLASSIFIER
+        value: "true"
+      - key: EMOTION_SERVICE_URL
+        sync: false
+      - key: TRANSFORMERS_CACHE
+        value: /opt/render/.cache/huggingface
+
+  # ─── Emotion Detection (Python) ───
+  - type: web
+    name: mindsafe-emotion
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: src/services/emotion_detection
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8001"
+      - key: PYTHON_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: WARNING
+      - key: MODEL_DEVICE
+        value: cpu
+      - key: TRANSFORMERS_CACHE
+        value: /opt/render/.cache/huggingface
+
+  # ─── Mood Analytics (Python) ───
+  - type: web
+    name: mindsafe-mood
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: src/services/mood_analytics
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8002"
+      - key: PYTHON_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: WARNING
+      - key: DATABASE_URL
+        sync: false
+
+  # ─── Crisis Detection (Python) ───
+  - type: web
+    name: mindsafe-crisis
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: src/services/crisis_detection
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8003"
+      - key: PYTHON_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: WARNING
+
+  # ─── Queue Worker (Background) ───
+  - type: worker
+    name: mindsafe-worker
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: src/services/queue_worker
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: RABBITMQ_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false

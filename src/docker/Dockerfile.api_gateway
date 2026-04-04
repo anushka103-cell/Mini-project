@@ -1,0 +1,35 @@
+# Dockerfile for API Gateway
+# Date: 2026-03-27
+
+FROM node:20-alpine AS base
+
+WORKDIR /app
+
+# Install dependencies
+FROM base AS dependencies
+COPY src/backend/package.json src/backend/package-lock.json ./
+RUN npm ci
+
+# Build stage
+FROM dependencies AS builder
+COPY src/backend/server.js ./server.js
+COPY src/backend/seed.js ./seed.js
+COPY src/backend/src ./src
+RUN npm run build 2>/dev/null || true
+
+# Production stage
+FROM base AS production
+
+ENV NODE_ENV=production
+ENV PORT=5000
+
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=builder /app .
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:5000/health',(r)=>r.statusCode === 200 ? process.exit(0) : process.exit(1))"
+
+EXPOSE 5000
+
+CMD ["node", "server.js"]
