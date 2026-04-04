@@ -45,15 +45,24 @@ function generateReconnectCode() {
 
 function setupAnonymousChat(server, { corsOrigin }) {
   // Init Redis for reconnect code persistence
-  const redisUrl = process.env.REDIS_URL || "redis://localhost:6379/0";
-  const redisClient = new Redis(redisUrl, {
-    maxRetriesPerRequest: 3,
-    retryStrategy: (times) => Math.min(times * 200, 2000),
-    lazyConnect: true,
-  });
-  redisClient.connect().catch((err) =>
-    console.warn("Redis reconnect-store connect failed (codes will be in-memory):", err.message),
-  );
+  const redisUrl = process.env.REDIS_URL;
+  let redisClient = null;
+
+  if (redisUrl) {
+    redisClient = new Redis(redisUrl, {
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times) => (times > 3 ? null : Math.min(times * 200, 2000)),
+      lazyConnect: true,
+    });
+    redisClient.on("error", (err) =>
+      console.warn("Redis error (non-fatal):", err.message),
+    );
+    redisClient.connect().catch((err) =>
+      console.warn("Redis reconnect-store connect failed (codes will be in-memory):", err.message),
+    );
+  } else {
+    console.log("REDIS_URL not set — anonymous chat reconnect codes will be in-memory only");
+  }
   reconnectStore.init(redisClient);
 
   const io = new Server(server, {

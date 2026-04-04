@@ -17,8 +17,12 @@ function init(redisClient) {
  */
 async function set(code, hashA, hashB) {
   if (!redis) return;
-  const value = JSON.stringify({ hashA, hashB });
-  await redis.set(RECONNECT_PREFIX + code, value, "EX", TTL_SECONDS);
+  try {
+    const value = JSON.stringify({ hashA, hashB });
+    await redis.set(RECONNECT_PREFIX + code, value, "EX", TTL_SECONDS);
+  } catch {
+    // Redis unavailable — code won't persist across restarts
+  }
 }
 
 /**
@@ -27,9 +31,9 @@ async function set(code, hashA, hashB) {
  */
 async function get(code) {
   if (!redis) return null;
-  const raw = await redis.get(RECONNECT_PREFIX + code);
-  if (!raw) return null;
   try {
+    const raw = await redis.get(RECONNECT_PREFIX + code);
+    if (!raw) return null;
     return JSON.parse(raw);
   } catch {
     return null;
@@ -41,7 +45,11 @@ async function get(code) {
  */
 async function del(code) {
   if (!redis) return;
-  await redis.del(RECONNECT_PREFIX + code);
+  try {
+    await redis.del(RECONNECT_PREFIX + code);
+  } catch {
+    // Redis unavailable — non-fatal
+  }
 }
 
 module.exports = { init, set, get, del };
