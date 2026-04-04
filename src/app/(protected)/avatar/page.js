@@ -21,7 +21,18 @@ export default function AvatarPage() {
   const [showEmojiBar, setShowEmojiBar] = useState(false);
   const avatarRef = useRef(null);
 
-  const quickEmojis = ["😊", "😢", "😰", "😡", "😴", "🤗", "💪", "🙏", "❤️", "😔"];
+  const quickEmojis = [
+    "😊",
+    "😢",
+    "😰",
+    "😡",
+    "😴",
+    "🤗",
+    "💪",
+    "🙏",
+    "❤️",
+    "😔",
+  ];
 
   // Avatar state driven by chat
   const [emotion, setEmotion] = useState("neutral");

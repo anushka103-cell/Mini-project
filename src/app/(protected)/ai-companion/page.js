@@ -20,7 +20,18 @@ export default function AICompanion() {
   const [prefsSaveState, setPrefsSaveState] = useState("idle");
   const [showEmojiBar, setShowEmojiBar] = useState(false);
 
-  const quickEmojis = ["😊", "😢", "😰", "😡", "😴", "🤗", "💪", "🙏", "❤️", "😔"];
+  const quickEmojis = [
+    "😊",
+    "😢",
+    "😰",
+    "😡",
+    "😴",
+    "🤗",
+    "💪",
+    "🙏",
+    "❤️",
+    "😔",
+  ];
 
   // Voice & Audio States
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
@@ -128,7 +139,10 @@ export default function AICompanion() {
 
   const clearChat = async () => {
     setMessages([
-      { role: "ai", content: "Hi, I'm here for you. How are you feeling today?" },
+      {
+        role: "ai",
+        content: "Hi, I'm here for you. How are you feeling today?",
+      },
     ]);
     setChatSessionId(null);
     try {
