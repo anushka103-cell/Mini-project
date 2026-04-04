@@ -69,7 +69,7 @@ function createChatController(userDataService, { chatbotServiceUrl }) {
 
       // Retry once if chatbot is waking up (Render free-tier cold start)
       if (!response.ok && (response.status >= 500 || response.status === 0)) {
-        await new Promise((r) => setTimeout(r, 3000));
+        await new Promise((r) => setTimeout(r, 15000));
         response = await fetch(`${chatbotServiceUrl}/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -96,7 +96,7 @@ function createChatController(userDataService, { chatbotServiceUrl }) {
 
       // Retry once on network error (chatbot may be waking from sleep)
       try {
-        await new Promise((r) => setTimeout(r, 4000));
+        await new Promise((r) => setTimeout(r, 15000));
         const retryController = new AbortController();
         const retryTimeout = setTimeout(() => retryController.abort(), 60_000);
         const retryRes = await fetch(`${chatbotServiceUrl}/chat`, {

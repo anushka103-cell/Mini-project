@@ -195,7 +195,14 @@ export default function AICompanion() {
 
       // Retry once on 502 (chatbot waking up from sleep on free tier)
       if (chatbotRes.status === 502) {
-        await new Promise((r) => setTimeout(r, 3000));
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._pendingId === pendingId
+              ? { ...msg, content: "Waking up, please wait..." }
+              : msg,
+          ),
+        );
+        await new Promise((r) => setTimeout(r, 8000));
         chatbotRes = await fetchWithAuth(
           `${API_BASE_URL}/api/chatbot`,
           { ...chatbotOpts, signal: controller.signal },
