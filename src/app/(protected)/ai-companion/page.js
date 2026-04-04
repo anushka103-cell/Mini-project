@@ -42,10 +42,13 @@ export default function AICompanion() {
   const hasLoadedPreferences = useRef(false);
   const router = useRouter();
 
-  // Load data on mount
+  // Load data on mount and warm up chatbot service (Render free-tier sleeps)
   useEffect(() => {
     loadChatHistory();
-    // Preferences are loaded automatically by usePreferencesManager hook
+    // Fire-and-forget wake-up ping so the chatbot is ready by first message
+    fetch(`${API_BASE_URL}/api/chatbot/health`, { method: "GET" }).catch(
+      () => {},
+    );
   }, []);
 
   // Apply loaded preferences
@@ -151,7 +154,7 @@ export default function AICompanion() {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s for Render free-tier cold starts
+      const timeoutId = setTimeout(() => controller.abort(), 120_000); // 120s for Render free-tier cold starts
 
       // Send plaintext to chatbot — it needs raw text for emotion detection.
       // Chat history is encrypted separately when persisted below.

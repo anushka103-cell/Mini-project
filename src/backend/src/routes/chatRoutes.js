@@ -5,6 +5,12 @@ const { validateChatMessage } = require("../middleware/validators");
 function createChatRoutes(chatController, verifyToken) {
   const router = express.Router();
 
+  // Public warm-up endpoint — wakes the chatbot on Render free tier
+  router.get(
+    "/chatbot/health",
+    asyncHandler(chatController.chatbotHealth),
+  );
+
   router.post("/chatbot", verifyToken, asyncHandler(chatController.askChatbot));
 
   router.post(

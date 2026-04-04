@@ -12,27 +12,32 @@ function createChatController(userDataService, { chatbotServiceUrl }) {
         ? style.toLowerCase()
         : "balanced";
 
-    const profileResult = await userDataService.getProfile(
-      req.user.id,
-      req.user.email,
-    );
-    const profileName =
-      profileResult &&
-      profileResult.profile &&
-      typeof profileResult.profile.anonymousName === "string"
-        ? profileResult.profile.anonymousName.trim()
-        : "";
-    const fallbackEmailName =
-      typeof req.user.email === "string" && req.user.email.includes("@")
-        ? req.user.email.split("@")[0]
-        : "";
-    const userName = profileName || fallbackEmailName || "friend";
+    let userName = "friend";
+    try {
+      const profileResult = await userDataService.getProfile(
+        req.user.id,
+        req.user.email,
+      );
+      const profileName =
+        profileResult &&
+        profileResult.profile &&
+        typeof profileResult.profile.anonymousName === "string"
+          ? profileResult.profile.anonymousName.trim()
+          : "";
+      const fallbackEmailName =
+        typeof req.user.email === "string" && req.user.email.includes("@")
+          ? req.user.email.split("@")[0]
+          : "";
+      userName = profileName || fallbackEmailName || "friend";
+    } catch {
+      // Profile lookup failed (e.g. DB cold start); continue with default name
+    }
     const useName = use_name !== false;
     const useMemory = use_memory !== false;
 
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 55000);
+      const timeout = setTimeout(() => controller.abort(), 120_000);
 
       const response = await fetch(`${chatbotServiceUrl}/chat`, {
         method: "POST",
@@ -83,6 +88,22 @@ function createChatController(userDataService, { chatbotServiceUrl }) {
       const result = await userDataService.getChatMessages(req.user.id);
       return res.json(result);
     },
+
+    async chatbotHealth(_req, res) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 120_000);
+        const response = await fetch(`${chatbotServiceUrl}/health`, {
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        const data = await response.json();
+        return res.json(data);
+      } catch {
+        return res.status(502).json({ status: "unavailable" });
+      }
+    },
+
     askChatbot,
   };
 }

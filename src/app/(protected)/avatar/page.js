@@ -78,6 +78,11 @@ export default function AvatarPage() {
     } catch (e) {
       console.log("Could not load saved preferences:", e);
     }
+
+    // Fire-and-forget wake-up ping so the chatbot is ready by first message
+    fetch(`${API_BASE_URL}/api/chatbot/health`, { method: "GET" }).catch(
+      () => {},
+    );
   }, []);
 
   // Send message to chatbot
@@ -122,7 +127,7 @@ export default function AvatarPage() {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s for Render free-tier cold starts
+      const timeoutId = setTimeout(() => controller.abort(), 120_000); // 120s for Render free-tier cold starts
 
       const chatbotRes = await fetchWithAuth(
         `${API_BASE_URL}/api/chatbot`,
