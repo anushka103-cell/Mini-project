@@ -1,6 +1,6 @@
 # MindSafe — Privacy-First Mental Health Platform
 
-A Next.js + Python microservices platform providing AI companions, anonymous peer support, mood tracking, 3D avatars, and therapeutic games — all with end-to-end encryption.
+A Next.js + Python microservices platform providing AI companions, anonymous peer support, mood tracking, 3D VRM avatars with emotion-responsive expressions, and therapeutic games — all with end-to-end encryption.
 
 ## Architecture
 
@@ -145,15 +145,31 @@ tests/                # Smoke and integration tests
 | ------------------------------------ | ---------------------------------------------------------------- |
 | Frontend stuck on "Compiling"        | Delete `.next/` folder and restart `npm run dev`                 |
 | "Trouble connecting" in AI Companion | Start the chatbot service: `python src/services/chatbot/main.py` |
+| AI Companion slow first response     | Render free tier cold start (~50s) — wait and retry              |
 | 401 Unauthorized on API calls        | Sign up / log in first — all API routes require JWT auth         |
+| Avatar stuck in T-pose               | Ensure VRM files in `public/avatars/` are valid (15+ MB each)    |
 | Python module not found              | Activate venv and install requirements for the specific service  |
 | Port already in use                  | Kill the process: `npx kill-port 3000` (or whichever port)       |
 
 ## Docs
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [Deployment Architecture](docs/DEPLOYMENT_ARCHITECTURE.md)
 - [Quick Start Guide](docs/QUICK_START_GUIDE.md)
 - [Quick Reference](docs/QUICK_REFERENCE.md)
+- [Deployment Guide](docs/DEPLOYMENT_GUIDE.md)
+- [Tech Stack](docs/TECH_STACK.md)
 - [API Documentation](docs/api/REST-API.md)
 - [Encryption Implementation](docs/ENCRYPTION_IMPLEMENTATION.md)
+- [In-App Testing Steps](docs/IN_APP_TESTING_STEPS.md)
+
+## 3D Avatar System
+
+MindSafe features a 3D VRM avatar companion powered by Three.js, React Three Fiber, and `@pixiv/three-vrm`:
+
+- **Two VRM models** — Female (VRoid AvatarSample_A) and Male (VRoid AvatarSample_C) from VRoid Hub
+- **Emotion-responsive expressions** — Avatar facial expressions change based on detected conversation emotion
+- **10 background colors** — Soft Blue, Lavender, Mint, Peach, Sky, Warm Gray, Ocean, Forest, Sunset, Midnight
+- **Voice playback** — Text-to-speech with 8 voice profiles, adjustable pitch/speed/volume
+- **Auto-save preferences** — Avatar model, background, voice settings persist across sessions via localStorage
+- **Speech cancel** — Voice playback stops automatically when opening the customizer or navigating away
+- **Chat integration** — Chat panel disabled during customization preview to prevent accidental input
+- **Camera presets** — Upper body, face close-up, full body, and side view with smooth transitions
