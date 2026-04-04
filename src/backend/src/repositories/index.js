@@ -19,9 +19,14 @@ async function initialize() {
   }
 
   if (USE_POSTGRES) {
-    console.log("Initializing PostgreSQL repository...");
-    await postgresStore.initializeDatabase();
-    store = postgresStore;
+    try {
+      console.log("Initializing PostgreSQL repository...");
+      await postgresStore.initializeDatabase();
+      store = postgresStore;
+    } catch (err) {
+      console.warn("PostgreSQL initialization failed, falling back to in-memory store:", err.message);
+      store = memoryStore;
+    }
   } else {
     console.log("Using in-memory repository (development mode)");
     store = memoryStore;

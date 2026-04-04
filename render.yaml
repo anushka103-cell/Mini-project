@@ -148,18 +148,6 @@ services:
         value: WARNING
 
   # ─── Queue Worker (Background) ───
-  - type: worker
-    name: mindsafe-worker
-    runtime: python
-    region: singapore
-    plan: free
-    rootDir: src/services/queue_worker
-    buildCommand: pip install -r requirements.txt
-    startCommand: python main.py
-    envVars:
-      - key: RABBITMQ_URL
-        sync: false
-      - key: DATABASE_URL
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
+  # NOTE: Removed from Blueprint — Render free tier does not support
+  # background workers (type: worker). Re-enable on a paid plan or
+  # convert to a cron job if periodic processing is needed.
