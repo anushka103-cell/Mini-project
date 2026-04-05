@@ -65,6 +65,13 @@ async function createApp() {
     .filter(Boolean);
 
   app.disable("x-powered-by");
+
+  // Public endpoints — registered before CORS so they're accessible from
+  // any origin (cron services, monitoring tools, direct health checks).
+  app.get("/", basicController.getRoot);
+  app.get("/health", basicController.getHealth);
+  app.get("/warmup", basicController.warmup);
+
   app.use(
     helmet({
       contentSecurityPolicy: false, // handled by frontend / nginx
@@ -127,9 +134,7 @@ async function createApp() {
     recommendationServiceUrl: RECOMMENDATION_SERVICE_URL,
   });
 
-  app.get("/", basicController.getRoot);
-  app.get("/health", basicController.getHealth);
-  app.get("/warmup", basicController.warmup);
+  });
 
   // Add decryption middleware for client-encrypted envelopes (after auth)
   app.use("/api", createDecryptEnvelopeMiddleware(userRepository));
