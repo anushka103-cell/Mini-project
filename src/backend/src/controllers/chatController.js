@@ -61,8 +61,10 @@ function createChatController(userDataService, { chatbotServiceUrl }) {
         use_memory: useMemory,
       };
 
-      const maxAttempts = 4;
-      const delays = [0, 10_000, 20_000, 25_000]; // progressive backoff
+      const maxAttempts = 8;
+      // Progressive backoff — total budget ~90 s; covers chatbot cold start
+      // even when the API gateway itself just finished waking.
+      const delays = [0, 5_000, 10_000, 10_000, 15_000, 15_000, 15_000, 20_000];
       let response;
       let lastError;
 

@@ -201,65 +201,62 @@ export default function AICompanion() {
         signal: controller.signal,
       };
 
-      let chatbotRes = await fetchWithAuth(
-        `${API_BASE_URL}/api/chatbot`,
-        chatbotOpts,
-        API_BASE_URL,
-      );
+      // Continuous retry loop: retry every 5 s for up to 120 s.
+      // Covers cascading cold starts where BOTH the API gateway (~50 s)
+      // and chatbot microservice (~50 s) need to wake up sequentially.
+      const RETRY_BUDGET_MS = 120_000;
+      const RETRY_INTERVAL_MS = 5_000;
+      const retryStart = Date.now();
+      let chatbotRes;
 
-      // Retry up to 3 times with progressive backoff (handles Render cold starts ~50s)
-      const maxRetries = 3;
-      const retryDelays = [10_000, 20_000, 25_000];
-      for (
-        let i = 0;
-        i < maxRetries &&
-        (chatbotRes.status === 502 || chatbotRes.status === 503);
-        i++
-      ) {
+      while (Date.now() - retryStart < RETRY_BUDGET_MS) {
+        try {
+          chatbotRes = await fetchWithAuth(
+            `${API_BASE_URL}/api/chatbot`,
+            { ...chatbotOpts, signal: controller.signal },
+            API_BASE_URL,
+          );
+          if (chatbotRes.status !== 502 && chatbotRes.status !== 503) break;
+        } catch (err) {
+          if (err && err.name === "AbortError") break;
+          chatbotRes = null; // network error — gateway still waking
+        }
         setMessages((prev) =>
           prev.map((msg) =>
             msg._pendingId === pendingId
-              ? { ...msg, content: "Service is waking up, please wait..." }
+              ? { ...msg, content: "Services warming up, please wait\u2026" }
               : msg,
           ),
         );
-        await new Promise((r) => setTimeout(r, retryDelays[i]));
-        chatbotRes = await fetchWithAuth(
-          `${API_BASE_URL}/api/chatbot`,
-          { ...chatbotOpts, signal: controller.signal },
-          API_BASE_URL,
-        );
+        await new Promise((r) => setTimeout(r, RETRY_INTERVAL_MS));
       }
 
       clearTimeout(timeoutId);
 
       let chatbotData = {};
       try {
-        chatbotData = await chatbotRes.json();
+        chatbotData = chatbotRes ? await chatbotRes.json() : {};
       } catch {
         chatbotData = {};
       }
 
-      if (chatbotRes.ok) {
+      if (chatbotRes && chatbotRes.ok) {
         if (chatbotData.session_id) {
           setChatSessionId(chatbotData.session_id);
         }
         aiResponseText =
           chatbotData.response ||
           "I hear you. Thank you for sharing that with me.";
-      } else if (chatbotRes.status === 429) {
+      } else if (chatbotRes && chatbotRes.status === 429) {
         aiResponseText =
           "I need a moment to catch my breath — too many messages at once. Please wait a minute and try again.";
-      } else if (chatbotRes.status === 502 || chatbotRes.status === 503) {
-        aiResponseText =
-          "The service is still starting up. This can take up to a minute on the first visit — please try sending your message once more.";
       } else {
         aiResponseText =
-          "I am having trouble connecting right now. Please try again.";
+          "The AI service is temporarily unavailable. Please try again in a minute or two.";
       }
     } catch {
       aiResponseText =
-        "The service is still starting up. This can take up to a minute on the first visit — please try sending your message once more.";
+        "The AI service is temporarily unavailable. Please try again in a minute or two.";
     }
 
     const aiResponse = { role: "ai", content: aiResponseText };
