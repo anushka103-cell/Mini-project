@@ -134,8 +134,6 @@ async function createApp() {
     recommendationServiceUrl: RECOMMENDATION_SERVICE_URL,
   });
 
-  });
-
   // Add decryption middleware for client-encrypted envelopes (after auth)
   app.use("/api", createDecryptEnvelopeMiddleware(userRepository));
 
