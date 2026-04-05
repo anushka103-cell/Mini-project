@@ -17,25 +17,45 @@ function getHealth(_req, res) {
 }
 
 /**
- * Fire-and-forget health pings to all Render-hosted microservices.
- * Responds immediately; services wake up in the background.
+ * Ping all Render-hosted microservices and wait (with retries) until each
+ * one responds.  Returns the actual readiness status so the frontend knows
+ * whether a cold start is still in progress.
  */
-function warmup(_req, res) {
+async function warmup(_req, res) {
   const services = [
     { name: "chatbot", url: `${CHATBOT_SERVICE_URL}/health` },
     { name: "mood", url: `${MOOD_ANALYTICS_URL}/health` },
     { name: "recommendation", url: `${RECOMMENDATION_SERVICE_URL}/health` },
   ];
 
-  // Fire all pings — don't await, just kick-start the cold starts
-  services.forEach(({ url }) => {
-    fetch(url, { signal: AbortSignal.timeout(60_000) }).catch(() => {});
-  });
+  const TIMEOUT = 60_000; // per-service timeout
+  const INTERVAL = 5_000; // retry interval
+  const BUDGET = 90_000; // total retry budget per service
 
-  res.json({
-    status: "warming up",
-    services: services.map((s) => s.name),
-  });
+  async function pingUntilReady(url) {
+    const start = Date.now();
+    while (Date.now() - start < BUDGET) {
+      try {
+        const r = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT) });
+        if (r.ok) return "ready";
+      } catch {
+        // still waking
+      }
+      await new Promise((r) => setTimeout(r, INTERVAL));
+    }
+    return "starting";
+  }
+
+  // Ping all in parallel
+  const results = await Promise.all(
+    services.map(async (svc) => ({
+      name: svc.name,
+      status: await pingUntilReady(svc.url),
+    })),
+  );
+
+  const allReady = results.every((r) => r.status === "ready");
+  res.json({ status: allReady ? "ready" : "warming up", services: results });
 }
 
 module.exports = {

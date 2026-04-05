@@ -16,6 +16,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/cron/:path*",
+      "destination": "/api/cron/:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "${NEXT_PUBLIC_API_URL}/api/:path*"
     },
