@@ -37,7 +37,8 @@ function createChatController(userDataService, { chatbotServiceUrl }) {
       if (typeof req.user.email === "string" && req.user.email.includes("@")) {
         const prefix = req.user.email.split("@")[0];
         if (/^[a-zA-Z]{2,20}$/.test(prefix)) {
-          fallbackEmailName = prefix.charAt(0).toUpperCase() + prefix.slice(1).toLowerCase();
+          fallbackEmailName =
+            prefix.charAt(0).toUpperCase() + prefix.slice(1).toLowerCase();
         }
       }
       userName = profileName || anonName || fallbackEmailName || "friend";
@@ -60,25 +61,39 @@ function createChatController(userDataService, { chatbotServiceUrl }) {
         use_memory: useMemory,
       };
 
-      let response = await fetch(`${chatbotServiceUrl}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
+      const maxAttempts = 4;
+      const delays = [0, 10_000, 20_000, 25_000]; // progressive backoff
+      let response;
+      let lastError;
 
-      // Retry once if chatbot is waking up (Render free-tier cold start)
-      if (!response.ok && (response.status >= 500 || response.status === 0)) {
-        await new Promise((r) => setTimeout(r, 15000));
-        response = await fetch(`${chatbotServiceUrl}/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        });
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (attempt > 0) {
+          await new Promise((r) => setTimeout(r, delays[attempt]));
+        }
+        try {
+          response = await fetch(`${chatbotServiceUrl}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          });
+          if (response.ok || response.status < 500) break; // success or client error — stop retrying
+          lastError = null;
+        } catch (err) {
+          lastError = err;
+          response = null;
+          if (err && err.name === "AbortError") break; // timeout — don't retry
+        }
       }
 
       clearTimeout(timeout);
+
+      if (lastError) {
+        if (lastError.name === "AbortError") {
+          return res.status(504).json({ message: "chatbot request timed out" });
+        }
+        return res.status(502).json({ message: "chatbot service unavailable" });
+      }
 
       const data = await response.json();
       if (!response.ok) {
@@ -93,32 +108,7 @@ function createChatController(userDataService, { chatbotServiceUrl }) {
       if (isAbort) {
         return res.status(504).json({ message: "chatbot request timed out" });
       }
-
-      // Retry once on network error (chatbot may be waking from sleep)
-      try {
-        await new Promise((r) => setTimeout(r, 15000));
-        const retryController = new AbortController();
-        const retryTimeout = setTimeout(() => retryController.abort(), 60_000);
-        const retryRes = await fetch(`${chatbotServiceUrl}/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: content.trim(),
-            session_id: session_id || null,
-            style: normalizedStyle,
-            user_name: useName ? userName : "friend",
-            use_name: useName,
-            use_memory: useMemory,
-          }),
-          signal: retryController.signal,
-        });
-        clearTimeout(retryTimeout);
-        const retryData = await retryRes.json();
-        if (retryRes.ok) return res.json(retryData);
-        return res.status(retryRes.status).json({ message: retryData?.detail || "chatbot request failed" });
-      } catch {
-        return res.status(502).json({ message: "chatbot service unavailable" });
-      }
+      return res.status(502).json({ message: "chatbot service unavailable" });
     }
   }
 

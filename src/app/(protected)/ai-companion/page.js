@@ -207,16 +207,23 @@ export default function AICompanion() {
         API_BASE_URL,
       );
 
-      // Retry once on 502 (chatbot waking up from sleep on free tier)
-      if (chatbotRes.status === 502) {
+      // Retry up to 3 times with progressive backoff (handles Render cold starts ~50s)
+      const maxRetries = 3;
+      const retryDelays = [10_000, 20_000, 25_000];
+      for (
+        let i = 0;
+        i < maxRetries &&
+        (chatbotRes.status === 502 || chatbotRes.status === 503);
+        i++
+      ) {
         setMessages((prev) =>
           prev.map((msg) =>
             msg._pendingId === pendingId
-              ? { ...msg, content: "Waking up, please wait..." }
+              ? { ...msg, content: "Service is waking up, please wait..." }
               : msg,
           ),
         );
-        await new Promise((r) => setTimeout(r, 8000));
+        await new Promise((r) => setTimeout(r, retryDelays[i]));
         chatbotRes = await fetchWithAuth(
           `${API_BASE_URL}/api/chatbot`,
           { ...chatbotOpts, signal: controller.signal },
@@ -245,14 +252,14 @@ export default function AICompanion() {
           "I need a moment to catch my breath — too many messages at once. Please wait a minute and try again.";
       } else if (chatbotRes.status === 502 || chatbotRes.status === 503) {
         aiResponseText =
-          "I'm waking up — the service was resting. Please send your message again in a few seconds.";
+          "The service is still starting up. This can take up to a minute on the first visit — please try sending your message once more.";
       } else {
         aiResponseText =
           "I am having trouble connecting right now. Please try again.";
       }
     } catch {
       aiResponseText =
-        "I'm waking up — the service was resting. Please send your message again in a few seconds.";
+        "The service is still starting up. This can take up to a minute on the first visit — please try sending your message once more.";
     }
 
     const aiResponse = { role: "ai", content: aiResponseText };
