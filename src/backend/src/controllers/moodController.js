@@ -1,12 +1,39 @@
 function createMoodController({ moodAnalyticsUrl }) {
+  // Shared retry helper for Render free-tier cold starts (~50s)
+  async function fetchWithRetry(url, opts = {}, timeoutMs = 60_000) {
+    const maxAttempts = 4;
+    const delays = [0, 10_000, 20_000, 25_000];
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    let response;
+    let lastError;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, delays[attempt]));
+      try {
+        response = await fetch(url, { ...opts, signal: controller.signal });
+        if (response.ok || response.status < 500) break;
+        lastError = null;
+      } catch (err) {
+        lastError = err;
+        response = null;
+        if (err && err.name === "AbortError") break;
+      }
+    }
+    clearTimeout(timeout);
+
+    if (lastError) {
+      const isAbort = lastError.name === "AbortError";
+      const err = new Error(isAbort ? "timeout" : "unavailable");
+      err.statusCode = isAbort ? 504 : 502;
+      throw err;
+    }
+    return response;
+  }
+
   async function proxyGet(path, res) {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-      const response = await fetch(`${moodAnalyticsUrl}${path}`, {
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
+      const response = await fetchWithRetry(`${moodAnalyticsUrl}${path}`);
       const data = await response.json();
       if (!response.ok) {
         return res
@@ -15,11 +42,11 @@ function createMoodController({ moodAnalyticsUrl }) {
       }
       return res.json(data);
     } catch (error) {
-      const isAbort = error && error.name === "AbortError";
-      return res.status(isAbort ? 504 : 502).json({
-        message: isAbort
-          ? "mood service request timed out"
-          : "mood service unavailable",
+      return res.status(error.statusCode || 502).json({
+        message:
+          error.statusCode === 504
+            ? "mood service request timed out"
+            : "mood service unavailable",
       });
     }
   }
@@ -45,9 +72,7 @@ function createMoodController({ moodAnalyticsUrl }) {
     }
 
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-      const response = await fetch(`${moodAnalyticsUrl}/moods/log`, {
+      const response = await fetchWithRetry(`${moodAnalyticsUrl}/moods/log`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -63,9 +88,7 @@ function createMoodController({ moodAnalyticsUrl }) {
           time_of_day: time_of_day || null,
           logged_at: logged_at || null,
         }),
-        signal: controller.signal,
       });
-      clearTimeout(timeout);
       const data = await response.json();
       if (!response.ok) {
         return res
@@ -74,11 +97,11 @@ function createMoodController({ moodAnalyticsUrl }) {
       }
       return res.status(201).json(data);
     } catch (error) {
-      const isAbort = error && error.name === "AbortError";
-      return res.status(isAbort ? 504 : 502).json({
-        message: isAbort
-          ? "mood service request timed out"
-          : "mood service unavailable",
+      return res.status(error.statusCode || 502).json({
+        message:
+          error.statusCode === 504
+            ? "mood service request timed out"
+            : "mood service unavailable",
       });
     }
   }
@@ -126,13 +149,10 @@ function createMoodController({ moodAnalyticsUrl }) {
   async function deleteMood(req, res) {
     const moodId = req.params.id;
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-      const response = await fetch(
+      const response = await fetchWithRetry(
         `${moodAnalyticsUrl}/moods/${moodId}?user_id=${encodeURIComponent(req.user.analyticsSubjectId)}`,
-        { method: "DELETE", signal: controller.signal },
+        { method: "DELETE" },
       );
-      clearTimeout(timeout);
       const data = await response.json();
       if (!response.ok) {
         return res
@@ -141,11 +161,11 @@ function createMoodController({ moodAnalyticsUrl }) {
       }
       return res.json(data);
     } catch (error) {
-      const isAbort = error && error.name === "AbortError";
-      return res.status(isAbort ? 504 : 502).json({
-        message: isAbort
-          ? "mood service request timed out"
-          : "mood service unavailable",
+      return res.status(error.statusCode || 502).json({
+        message:
+          error.statusCode === 504
+            ? "mood service request timed out"
+            : "mood service unavailable",
       });
     }
   }
@@ -153,18 +173,14 @@ function createMoodController({ moodAnalyticsUrl }) {
   async function updateMood(req, res) {
     const moodId = req.params.id;
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-      const response = await fetch(
+      const response = await fetchWithRetry(
         `${moodAnalyticsUrl}/moods/${moodId}?user_id=${encodeURIComponent(req.user.analyticsSubjectId)}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(req.body),
-          signal: controller.signal,
         },
       );
-      clearTimeout(timeout);
       const data = await response.json();
       if (!response.ok) {
         return res
@@ -173,11 +189,11 @@ function createMoodController({ moodAnalyticsUrl }) {
       }
       return res.json(data);
     } catch (error) {
-      const isAbort = error && error.name === "AbortError";
-      return res.status(isAbort ? 504 : 502).json({
-        message: isAbort
-          ? "mood service request timed out"
-          : "mood service unavailable",
+      return res.status(error.statusCode || 502).json({
+        message:
+          error.statusCode === 504
+            ? "mood service request timed out"
+            : "mood service unavailable",
       });
     }
   }
@@ -189,13 +205,9 @@ function createMoodController({ moodAnalyticsUrl }) {
     }
     try {
       // Fetch last 7 days of mood data
-      const ctrl1 = new AbortController();
-      const t1 = setTimeout(() => ctrl1.abort(), 10000);
-      const logsRes = await fetch(
+      const logsRes = await fetchWithRetry(
         `${moodAnalyticsUrl}/moods/${req.user.analyticsSubjectId}/logs?days=7`,
-        { signal: ctrl1.signal },
       );
-      clearTimeout(t1);
       if (!logsRes.ok) {
         return res.status(404).json({ message: "no mood data for reflection" });
       }
@@ -248,7 +260,8 @@ function createMoodController({ moodAnalyticsUrl }) {
 
       const groqData = await groqRes.json();
       const reflection =
-        groqData.choices?.[0]?.message?.content || "Unable to generate reflection.";
+        groqData.choices?.[0]?.message?.content ||
+        "Unable to generate reflection.";
 
       return res.json({ reflection, entries_used: logs.length });
     } catch (error) {
