@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "@/lib/env";
+
 let tokenCache = {
   accessToken: null,
   refreshToken: null,
@@ -136,7 +138,7 @@ async function getValidAccessToken(apiBaseUrl) {
 async function fetchWithAuth(
   url,
   options = {},
-  apiBaseUrl = "http://localhost:5000",
+  apiBaseUrl = "https://mindsafe-api.onrender.com",
 ) {
   const token = await getValidAccessToken(apiBaseUrl);
 

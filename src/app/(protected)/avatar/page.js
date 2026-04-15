@@ -6,7 +6,8 @@ import AvatarCustomizer from "@/components/avatar/AvatarCustomizer";
 import { AVATAR_PRESETS } from "@/components/avatar/avatarPresets";
 import { fetchWithAuth } from "@/lib/authClient";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://mindsafe-api.onrender.com";
 
 // Map model IDs to VRM file paths
 const AVATAR_MODELS = {

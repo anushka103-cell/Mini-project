@@ -512,7 +512,7 @@ export default function AnonymousChat() {
     setChatSummary("");
     const ctrl = new AbortController();
     fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/anon/summary`,
+      `${process.env.NEXT_PUBLIC_API_URL || "https://mindsafe-api.onrender.com"}/api/anon/summary`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -553,7 +553,7 @@ export default function AnonymousChat() {
     const socketUrl =
       process.env.NEXT_PUBLIC_SOCKET_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
-      "http://localhost:5000";
+      "https://mindsafe-api.onrender.com";
     const newSocket = io(socketUrl, {
       transports: ["websocket", "polling"],
     });

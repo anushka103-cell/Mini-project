@@ -1,5 +1,6 @@
 // API route that proxies to backend
 import { headers } from "next/headers";
+import { API_BASE_URL } from "@/lib/env";
 
 export async function POST(request) {
   try {
@@ -7,7 +8,7 @@ export async function POST(request) {
     const authHeader = headersList.get("Authorization");
     const body = await request.json();
 
-    const res = await fetch("http://localhost:5000/api/chat", {
+    const res = await fetch(`${API_BASE_URL}/api/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

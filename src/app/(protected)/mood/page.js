@@ -23,34 +23,98 @@ import {
   Legend,
 } from "recharts";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API =
+  process.env.NEXT_PUBLIC_API_URL || "https://mindsafe-api.onrender.com";
 
 /* ─── constants ─── */
 const MOODS = [
-  { emoji: "😢", label: "Terrible", score: 2, color: "#ef4444", bg: "from-red-900/30" },
-  { emoji: "😟", label: "Bad", score: 4, color: "#f97316", bg: "from-orange-900/30" },
-  { emoji: "😐", label: "Okay", score: 5, color: "#eab308", bg: "from-yellow-900/30" },
-  { emoji: "🙂", label: "Good", score: 7, color: "#22c55e", bg: "from-green-900/30" },
-  { emoji: "😊", label: "Great", score: 9, color: "#06b6d4", bg: "from-cyan-900/30" },
+  {
+    emoji: "😢",
+    label: "Terrible",
+    score: 2,
+    color: "#ef4444",
+    bg: "from-red-900/30",
+  },
+  {
+    emoji: "😟",
+    label: "Bad",
+    score: 4,
+    color: "#f97316",
+    bg: "from-orange-900/30",
+  },
+  {
+    emoji: "😐",
+    label: "Okay",
+    score: 5,
+    color: "#eab308",
+    bg: "from-yellow-900/30",
+  },
+  {
+    emoji: "🙂",
+    label: "Good",
+    score: 7,
+    color: "#22c55e",
+    bg: "from-green-900/30",
+  },
+  {
+    emoji: "😊",
+    label: "Great",
+    score: 9,
+    color: "#06b6d4",
+    bg: "from-cyan-900/30",
+  },
 ];
 
 const EMOTIONS = [
-  "Happy", "Calm", "Grateful", "Excited", "Hopeful",
-  "Anxious", "Sad", "Angry", "Stressed", "Lonely",
-  "Tired", "Confused", "Motivated", "Peaceful", "Frustrated",
+  "Happy",
+  "Calm",
+  "Grateful",
+  "Excited",
+  "Hopeful",
+  "Anxious",
+  "Sad",
+  "Angry",
+  "Stressed",
+  "Lonely",
+  "Tired",
+  "Confused",
+  "Motivated",
+  "Peaceful",
+  "Frustrated",
 ];
 
 const ACTIVITIES = [
-  "🏃 Exercise", "🧘 Meditation", "📖 Reading", "🎵 Music",
-  "👫 Socializing", "🎮 Gaming", "🍳 Cooking", "🌳 Nature Walk",
-  "💼 Work", "📱 Screen Time", "🎨 Creative", "📝 Journaling",
-  "😴 Nap", "☕ Coffee", "🏋️ Gym", "🐕 Pet Time",
+  "🏃 Exercise",
+  "🧘 Meditation",
+  "📖 Reading",
+  "🎵 Music",
+  "👫 Socializing",
+  "🎮 Gaming",
+  "🍳 Cooking",
+  "🌳 Nature Walk",
+  "💼 Work",
+  "📱 Screen Time",
+  "🎨 Creative",
+  "📝 Journaling",
+  "😴 Nap",
+  "☕ Coffee",
+  "🏋️ Gym",
+  "🐕 Pet Time",
 ];
 
 const TRIGGERS = [
-  "Work stress", "Relationship", "Health", "Financial",
-  "Sleep quality", "Weather", "News", "Family",
-  "Achievement", "Conflict", "Loneliness", "Exercise",
+  "Work stress",
+  "Relationship",
+  "Health",
+  "Financial",
+  "Sleep quality",
+  "Weather",
+  "News",
+  "Family",
+  "Achievement",
+  "Conflict",
+  "Loneliness",
+  "Exercise",
 ];
 
 const PROMPTS = [
@@ -88,8 +152,16 @@ const RECS = {
 };
 
 const PIE_COLORS = [
-  "#06b6d4", "#8b5cf6", "#22c55e", "#f59e0b", "#ef4444",
-  "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16",
+  "#06b6d4",
+  "#8b5cf6",
+  "#22c55e",
+  "#f59e0b",
+  "#ef4444",
+  "#ec4899",
+  "#14b8a6",
+  "#f97316",
+  "#6366f1",
+  "#84cc16",
 ];
 
 const TABS = ["Log", "Charts", "History", "Insights"];
@@ -156,15 +228,36 @@ export default function MoodPage() {
     try {
       const [logsR, trendsR, weekR, vizR, patR, strR] = await Promise.all([
         fetchWithAuth(`${API}/api/moods/logs?days=90`, { method: "GET" }, API),
-        fetchWithAuth(`${API}/api/moods/trends?days=${chartDays}`, { method: "GET" }, API).catch(() => null),
-        fetchWithAuth(`${API}/api/moods/weekly-score`, { method: "GET" }, API).catch(() => null),
-        fetchWithAuth(`${API}/api/moods/visualization?days=${chartDays}`, { method: "GET" }, API).catch(() => null),
-        fetchWithAuth(`${API}/api/moods/patterns?days=90`, { method: "GET" }, API).catch(() => null),
-        fetchWithAuth(`${API}/api/moods/streaks`, { method: "GET" }, API).catch(() => null),
+        fetchWithAuth(
+          `${API}/api/moods/trends?days=${chartDays}`,
+          { method: "GET" },
+          API,
+        ).catch(() => null),
+        fetchWithAuth(
+          `${API}/api/moods/weekly-score`,
+          { method: "GET" },
+          API,
+        ).catch(() => null),
+        fetchWithAuth(
+          `${API}/api/moods/visualization?days=${chartDays}`,
+          { method: "GET" },
+          API,
+        ).catch(() => null),
+        fetchWithAuth(
+          `${API}/api/moods/patterns?days=90`,
+          { method: "GET" },
+          API,
+        ).catch(() => null),
+        fetchWithAuth(`${API}/api/moods/streaks`, { method: "GET" }, API).catch(
+          () => null,
+        ),
       ]);
 
       if (logsR?.ok) setLogs(await logsR.json());
-      else if (logsR?.status === 401) { router.replace("/login"); return; }
+      else if (logsR?.status === 401) {
+        router.replace("/login");
+        return;
+      }
 
       if (trendsR?.ok) setTrends(await trendsR.json());
       if (weekR?.ok) setWeeklyScore(await weekR.json());
@@ -178,11 +271,16 @@ export default function MoodPage() {
     }
   }, [router, chartDays]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
   /* --- save mood --- */
   const handleSave = async () => {
-    if (!selectedMood) { setError("Please select a mood"); return; }
+    if (!selectedMood) {
+      setError("Please select a mood");
+      return;
+    }
     setSaving(true);
     setError("");
 
@@ -191,19 +289,30 @@ export default function MoodPage() {
       if (note.trim()) {
         try {
           const key = await getEncryptionKey("mindsafe:mood");
-          const envelope = await createEncryptedEnvelope(note, key, "mindsafe:mood");
-          encryptedNotes = typeof envelope === "string" ? envelope : JSON.stringify(envelope);
-        } catch { /* fallback to plaintext */ }
+          const envelope = await createEncryptedEnvelope(
+            note,
+            key,
+            "mindsafe:mood",
+          );
+          encryptedNotes =
+            typeof envelope === "string" ? envelope : JSON.stringify(envelope);
+        } catch {
+          /* fallback to plaintext */
+        }
       }
 
       const emotionScores = {};
-      selectedEmotions.forEach((e) => { emotionScores[e] = 1.0; });
+      selectedEmotions.forEach((e) => {
+        emotionScores[e] = 1.0;
+      });
 
       const body = {
         mood_score: customScore,
         mood_label: selectedMood.emoji + " " + selectedMood.label,
         notes: encryptedNotes || null,
-        emotion_scores: Object.keys(emotionScores).length ? emotionScores : null,
+        emotion_scores: Object.keys(emotionScores).length
+          ? emotionScores
+          : null,
         activities: selectedActivities.length ? selectedActivities : null,
         triggers: selectedTriggers.length ? selectedTriggers : null,
         sleep_hours: sleepHours !== "" ? parseFloat(sleepHours) : null,
@@ -213,7 +322,11 @@ export default function MoodPage() {
 
       const res = await fetchWithAuth(
         `${API}/api/moods/log`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
         API,
       );
 
@@ -246,7 +359,11 @@ export default function MoodPage() {
   const handleDelete = async (id) => {
     if (!confirm("Delete this mood entry?")) return;
     try {
-      const res = await fetchWithAuth(`${API}/api/moods/${id}`, { method: "DELETE" }, API);
+      const res = await fetchWithAuth(
+        `${API}/api/moods/${id}`,
+        { method: "DELETE" },
+        API,
+      );
       if (res.ok) await fetchAll();
     } catch {}
   };
@@ -256,10 +373,18 @@ export default function MoodPage() {
     try {
       const res = await fetchWithAuth(
         `${API}/api/moods/${id}`,
-        { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notes: editNote }) },
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notes: editNote }),
+        },
         API,
       );
-      if (res.ok) { setEditingId(null); setEditNote(""); await fetchAll(); }
+      if (res.ok) {
+        setEditingId(null);
+        setEditNote("");
+        await fetchAll();
+      }
     } catch {}
   };
 
@@ -267,12 +392,18 @@ export default function MoodPage() {
   const fetchAiReflection = async () => {
     setAiLoading(true);
     try {
-      const res = await fetchWithAuth(`${API}/api/moods/ai-reflection`, { method: "GET" }, API);
+      const res = await fetchWithAuth(
+        `${API}/api/moods/ai-reflection`,
+        { method: "GET" },
+        API,
+      );
       if (res.ok) {
         const data = await res.json();
         setAiReflection(data.reflection);
       } else {
-        setAiReflection("Unable to generate reflection. Log more moods and try again.");
+        setAiReflection(
+          "Unable to generate reflection. Log more moods and try again.",
+        );
       }
     } catch {
       setAiReflection("AI reflection service is currently unavailable.");
@@ -284,20 +415,23 @@ export default function MoodPage() {
   /* --- export CSV --- */
   const exportCSV = () => {
     if (!logs.length) return;
-    const header = "Date,Score,Label,Activities,Triggers,Sleep,Exercise,Time,Notes\n";
-    const rows = logs.map((l) =>
-      [
-        l.logged_date,
-        l.mood_score,
-        `"${(l.mood_label || "").replace(/"/g, '""')}"`,
-        `"${(l.activities || []).join("; ")}"`,
-        `"${(l.triggers || []).join("; ")}"`,
-        l.sleep_hours ?? "",
-        l.exercise_minutes ?? "",
-        l.time_of_day ?? "",
-        `"${(l.notes || "").replace(/"/g, '""')}"`,
-      ].join(","),
-    ).join("\n");
+    const header =
+      "Date,Score,Label,Activities,Triggers,Sleep,Exercise,Time,Notes\n";
+    const rows = logs
+      .map((l) =>
+        [
+          l.logged_date,
+          l.mood_score,
+          `"${(l.mood_label || "").replace(/"/g, '""')}"`,
+          `"${(l.activities || []).join("; ")}"`,
+          `"${(l.triggers || []).join("; ")}"`,
+          l.sleep_hours ?? "",
+          l.exercise_minutes ?? "",
+          l.time_of_day ?? "",
+          `"${(l.notes || "").replace(/"/g, '""')}"`,
+        ].join(","),
+      )
+      .join("\n");
     const blob = new Blob([header + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -350,7 +484,9 @@ export default function MoodPage() {
   /* --- recommendations --- */
   const recommendation = useMemo(() => {
     if (!logs.length) return null;
-    const avg = logs.slice(0, 7).reduce((s, l) => s + l.mood_score, 0) / Math.min(logs.length, 7);
+    const avg =
+      logs.slice(0, 7).reduce((s, l) => s + l.mood_score, 0) /
+      Math.min(logs.length, 7);
     const bucket = avg <= 4 ? "low" : avg <= 6 ? "mid" : "high";
     return RECS[bucket][Math.floor(Math.random() * RECS[bucket].length)];
   }, [logs]);
@@ -385,7 +521,9 @@ export default function MoodPage() {
   /* --- calendar heatmap (last 12 weeks) --- */
   const calendarData = useMemo(() => {
     const map = {};
-    logs.forEach((l) => { map[l.logged_date] = l.mood_score; });
+    logs.forEach((l) => {
+      map[l.logged_date] = l.mood_score;
+    });
     const weeks = [];
     const today = new Date();
     for (let w = 11; w >= 0; w--) {
@@ -412,7 +550,9 @@ export default function MoodPage() {
 
   /* --- render --- */
   return (
-    <div className={`min-h-screen ${ambientBg} p-4 md:p-8 transition-colors duration-700`}>
+    <div
+      className={`min-h-screen ${ambientBg} p-4 md:p-8 transition-colors duration-700`}
+    >
       {/* Success animation overlay */}
       {showSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
@@ -425,7 +565,8 @@ export default function MoodPage() {
       {crisisAlert && (
         <div className="mb-6 rounded-xl border border-red-500/50 bg-red-950/60 p-4 text-center">
           <p className="text-red-300 font-semibold">
-            💛 We noticed your mood has been low for several days. You&apos;re not alone.
+            💛 We noticed your mood has been low for several days. You&apos;re
+            not alone.
           </p>
           <button
             onClick={() => router.push("/emergency")}
@@ -440,19 +581,32 @@ export default function MoodPage() {
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-3xl font-bold text-slate-100">💙 Mood Tracker</h1>
         <div className="flex flex-wrap gap-3">
-          <StatPill label="Streak" value={`🔥 ${streaks?.current_streak ?? 0}d`} />
+          <StatPill
+            label="Streak"
+            value={`🔥 ${streaks?.current_streak ?? 0}d`}
+          />
           <StatPill
             label="Weekly"
-            value={weeklyScore ? `${weeklyScore.weekly_mental_health_score.toFixed(0)}/100` : "—"}
+            value={
+              weeklyScore
+                ? `${weeklyScore.weekly_mental_health_score.toFixed(0)}/100`
+                : "—"
+            }
           />
           <StatPill
             label="Trend"
             value={
-              trends?.trend_direction === "improving" ? "📈 Improving" :
-              trends?.trend_direction === "declining" ? "📉 Declining" : "➡️ Stable"
+              trends?.trend_direction === "improving"
+                ? "📈 Improving"
+                : trends?.trend_direction === "declining"
+                  ? "📉 Declining"
+                  : "➡️ Stable"
             }
           />
-          <StatPill label="Total" value={streaks?.total_entries ?? logs.length} />
+          <StatPill
+            label="Total"
+            value={streaks?.total_entries ?? logs.length}
+          />
           <button
             onClick={exportCSV}
             className="rounded-lg bg-slate-800 border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700 transition"
@@ -488,20 +642,31 @@ export default function MoodPage() {
               {MOODS.map((m) => (
                 <button
                   key={m.label}
-                  onClick={() => { setSelectedMood(m); setCustomScore(m.score); }}
+                  onClick={() => {
+                    setSelectedMood(m);
+                    setCustomScore(m.score);
+                  }}
                   className={`rounded-xl p-4 text-center transition-all duration-200 ${
                     selectedMood?.label === m.label
                       ? "ring-2 ring-cyan-400 scale-105 shadow-lg"
                       : "hover:scale-102"
                   }`}
                   style={{
-                    backgroundColor: selectedMood?.label === m.label ? m.color + "30" : "rgb(30 41 59 / 0.6)",
-                    borderColor: selectedMood?.label === m.label ? m.color : "rgb(51 65 85 / 0.5)",
+                    backgroundColor:
+                      selectedMood?.label === m.label
+                        ? m.color + "30"
+                        : "rgb(30 41 59 / 0.6)",
+                    borderColor:
+                      selectedMood?.label === m.label
+                        ? m.color
+                        : "rgb(51 65 85 / 0.5)",
                     borderWidth: "1px",
                   }}
                 >
                   <span className="text-3xl block mb-1">{m.emoji}</span>
-                  <span className="text-xs font-medium text-slate-300">{m.label}</span>
+                  <span className="text-xs font-medium text-slate-300">
+                    {m.label}
+                  </span>
                 </button>
               ))}
             </div>
@@ -533,7 +698,9 @@ export default function MoodPage() {
                   active={selectedEmotions.includes(e)}
                   onClick={() =>
                     setSelectedEmotions((prev) =>
-                      prev.includes(e) ? prev.filter((x) => x !== e) : [...prev, e],
+                      prev.includes(e)
+                        ? prev.filter((x) => x !== e)
+                        : [...prev, e],
                     )
                   }
                 />
@@ -551,7 +718,9 @@ export default function MoodPage() {
                   active={selectedActivities.includes(a)}
                   onClick={() =>
                     setSelectedActivities((prev) =>
-                      prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a],
+                      prev.includes(a)
+                        ? prev.filter((x) => x !== a)
+                        : [...prev, a],
                     )
                   }
                 />
@@ -569,7 +738,9 @@ export default function MoodPage() {
                   active={selectedTriggers.includes(t)}
                   onClick={() =>
                     setSelectedTriggers((prev) =>
-                      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t],
+                      prev.includes(t)
+                        ? prev.filter((x) => x !== t)
+                        : [...prev, t],
                     )
                   }
                 />
@@ -581,7 +752,9 @@ export default function MoodPage() {
           <Card title="Wellness Check">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-slate-400 mb-1 block">😴 Sleep (hours)</label>
+                <label className="text-sm text-slate-400 mb-1 block">
+                  😴 Sleep (hours)
+                </label>
                 <input
                   type="number"
                   min="0"
@@ -594,7 +767,9 @@ export default function MoodPage() {
                 />
               </div>
               <div>
-                <label className="text-sm text-slate-400 mb-1 block">🏃 Exercise (minutes)</label>
+                <label className="text-sm text-slate-400 mb-1 block">
+                  🏃 Exercise (minutes)
+                </label>
                 <input
                   type="number"
                   min="0"
@@ -607,13 +782,16 @@ export default function MoodPage() {
               </div>
             </div>
             <p className="mt-2 text-xs text-slate-500">
-              ⏰ Auto-tagged: <span className="text-cyan-400">{getTimeOfDay()}</span>
+              ⏰ Auto-tagged:{" "}
+              <span className="text-cyan-400">{getTimeOfDay()}</span>
             </p>
           </Card>
 
           {/* Journal Prompt + Notes */}
           <Card title="Journal">
-            <p className="text-sm text-cyan-400 italic mb-3">💡 {todayPrompt}</p>
+            <p className="text-sm text-cyan-400 italic mb-3">
+              💡 {todayPrompt}
+            </p>
             <textarea
               placeholder="Write about your feelings..."
               value={note}
@@ -644,7 +822,9 @@ export default function MoodPage() {
                 key={d}
                 onClick={() => setChartDays(d)}
                 className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-                  chartDays === d ? "bg-cyan-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                  chartDays === d
+                    ? "bg-cyan-600 text-white"
+                    : "bg-slate-800 text-slate-400 hover:bg-slate-700"
                 }`}
               >
                 {d}d
@@ -658,19 +838,46 @@ export default function MoodPage() {
               <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={moodChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} />
-                  <YAxis domain={[0, 10]} tick={{ fontSize: 11, fill: "#94a3b8" }} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11, fill: "#94a3b8" }}
+                  />
+                  <YAxis
+                    domain={[0, 10]}
+                    tick={{ fontSize: 11, fill: "#94a3b8" }}
+                  />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #475569", borderRadius: "8px" }}
+                    contentStyle={{
+                      backgroundColor: "#1e293b",
+                      border: "1px solid #475569",
+                      borderRadius: "8px",
+                    }}
                     labelStyle={{ color: "#e2e8f0" }}
                   />
-                  <Line type="monotone" dataKey="score" stroke="#06b6d4" strokeWidth={2} dot={{ r: 3 }} name="Mood Score" />
-                  <Line type="monotone" dataKey="avg" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 5" dot={false} name="7-Day Avg" />
+                  <Line
+                    type="monotone"
+                    dataKey="score"
+                    stroke="#06b6d4"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    name="Mood Score"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="avg"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                    name="7-Day Avg"
+                  />
                   <Legend />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-slate-500 text-sm text-center py-8">Log moods to see your chart</p>
+              <p className="text-slate-500 text-sm text-center py-8">
+                Log moods to see your chart
+              </p>
             )}
           </Card>
 
@@ -687,7 +894,9 @@ export default function MoodPage() {
                     outerRadius={100}
                     paddingAngle={3}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }) =>
+                      `${name} ${(percent * 100).toFixed(0)}%`
+                    }
                   >
                     {emotionPieData.map((_, i) => (
                       <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
@@ -697,7 +906,9 @@ export default function MoodPage() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-slate-500 text-sm text-center py-8">Tag emotions to see breakdown</p>
+              <p className="text-slate-500 text-sm text-center py-8">
+                Tag emotions to see breakdown
+              </p>
             )}
           </Card>
 
@@ -706,7 +917,9 @@ export default function MoodPage() {
             <div className="flex gap-1 justify-center">
               <div className="flex flex-col gap-1 mr-1 text-[10px] text-slate-500 pt-0">
                 {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-                  <div key={i} className="h-4 flex items-center">{d}</div>
+                  <div key={i} className="h-4 flex items-center">
+                    {d}
+                  </div>
                 ))}
               </div>
               {calendarData.map((week, wi) => (
@@ -723,7 +936,14 @@ export default function MoodPage() {
             </div>
             <div className="flex items-center justify-center gap-2 mt-3 text-[10px] text-slate-500">
               <span>Less</span>
-              {["bg-slate-800", "bg-red-600", "bg-orange-500", "bg-yellow-500", "bg-green-500", "bg-cyan-400"].map((c) => (
+              {[
+                "bg-slate-800",
+                "bg-red-600",
+                "bg-orange-500",
+                "bg-yellow-500",
+                "bg-green-500",
+                "bg-cyan-400",
+              ].map((c) => (
                 <div key={c} className={`w-3 h-3 rounded-sm ${c}`} />
               ))}
               <span>More</span>
@@ -736,16 +956,36 @@ export default function MoodPage() {
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={activityBarData} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis type="number" domain={[0, 10]} tick={{ fontSize: 11, fill: "#94a3b8" }} />
-                  <YAxis dataKey="activity" type="category" tick={{ fontSize: 11, fill: "#94a3b8" }} width={120} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #475569", borderRadius: "8px" }}
+                  <XAxis
+                    type="number"
+                    domain={[0, 10]}
+                    tick={{ fontSize: 11, fill: "#94a3b8" }}
                   />
-                  <Bar dataKey="avg_mood" fill="#06b6d4" radius={[0, 4, 4, 0]} name="Avg Mood" />
+                  <YAxis
+                    dataKey="activity"
+                    type="category"
+                    tick={{ fontSize: 11, fill: "#94a3b8" }}
+                    width={120}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#1e293b",
+                      border: "1px solid #475569",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Bar
+                    dataKey="avg_mood"
+                    fill="#06b6d4"
+                    radius={[0, 4, 4, 0]}
+                    name="Avg Mood"
+                  />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-slate-500 text-sm text-center py-8">Tag activities to see correlations</p>
+              <p className="text-slate-500 text-sm text-center py-8">
+                Tag activities to see correlations
+              </p>
             )}
           </Card>
 
@@ -755,10 +995,27 @@ export default function MoodPage() {
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={patterns.day_of_week}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#94a3b8" }} />
-                  <YAxis domain={[0, 10]} tick={{ fontSize: 11, fill: "#94a3b8" }} />
-                  <Tooltip contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #475569", borderRadius: "8px" }} />
-                  <Bar dataKey="avg_mood" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Avg Mood" />
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fontSize: 11, fill: "#94a3b8" }}
+                  />
+                  <YAxis
+                    domain={[0, 10]}
+                    tick={{ fontSize: 11, fill: "#94a3b8" }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#1e293b",
+                      border: "1px solid #475569",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Bar
+                    dataKey="avg_mood"
+                    fill="#8b5cf6"
+                    radius={[4, 4, 0, 0]}
+                    name="Avg Mood"
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </Card>
@@ -804,20 +1061,27 @@ export default function MoodPage() {
             </div>
           </Card>
 
-          <p className="text-xs text-slate-500">{filteredLogs.length} entries</p>
+          <p className="text-xs text-slate-500">
+            {filteredLogs.length} entries
+          </p>
 
           {/* Grouped entries */}
           {groupedLogs.length === 0 ? (
-            <p className="text-slate-500 text-sm text-center py-8">No mood entries found.</p>
+            <p className="text-slate-500 text-sm text-center py-8">
+              No mood entries found.
+            </p>
           ) : (
             groupedLogs.map(([dateStr, entries]) => (
               <div key={dateStr}>
                 <h3 className="text-xs font-semibold text-slate-500 mb-2 pl-1">
-                  {new Date(dateStr + "T00:00:00").toLocaleDateString(undefined, {
-                    weekday: "long",
-                    month: "short",
-                    day: "numeric",
-                  })}
+                  {new Date(dateStr + "T00:00:00").toLocaleDateString(
+                    undefined,
+                    {
+                      weekday: "long",
+                      month: "short",
+                      day: "numeric",
+                    },
+                  )}
                 </h3>
                 {entries.map((entry) => (
                   <div
@@ -826,7 +1090,9 @@ export default function MoodPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">{entry.mood_label?.split(" ")[0] || "😐"}</span>
+                        <span className="text-lg">
+                          {entry.mood_label?.split(" ")[0] || "😐"}
+                        </span>
                         <span className="font-semibold text-slate-100">
                           {entry.mood_score}/10
                         </span>
@@ -837,10 +1103,16 @@ export default function MoodPage() {
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-slate-500">
                           {entry.time_of_day && `${entry.time_of_day} · `}
-                          {new Date(entry.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          {new Date(entry.created_at).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </span>
                         <button
-                          onClick={() => { setEditingId(entry.id); setEditNote(entry.notes || ""); }}
+                          onClick={() => {
+                            setEditingId(entry.id);
+                            setEditNote(entry.notes || "");
+                          }}
                           className="text-xs text-slate-500 hover:text-cyan-400 transition"
                         >
                           ✏️
@@ -857,16 +1129,30 @@ export default function MoodPage() {
                     {/* Meta tags */}
                     <div className="flex flex-wrap gap-1 mt-2">
                       {entry.activities?.map((a) => (
-                        <span key={a} className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-cyan-400">{a}</span>
+                        <span
+                          key={a}
+                          className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-cyan-400"
+                        >
+                          {a}
+                        </span>
                       ))}
                       {entry.triggers?.map((t) => (
-                        <span key={t} className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-orange-400">{t}</span>
+                        <span
+                          key={t}
+                          className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-orange-400"
+                        >
+                          {t}
+                        </span>
                       ))}
                       {entry.sleep_hours != null && (
-                        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-purple-400">😴 {entry.sleep_hours}h</span>
+                        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-purple-400">
+                          😴 {entry.sleep_hours}h
+                        </span>
                       )}
                       {entry.exercise_minutes != null && (
-                        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-green-400">🏃 {entry.exercise_minutes}m</span>
+                        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-green-400">
+                          🏃 {entry.exercise_minutes}m
+                        </span>
                       )}
                     </div>
 
@@ -874,7 +1160,12 @@ export default function MoodPage() {
                     {entry.emotion_scores && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {Object.keys(entry.emotion_scores).map((e) => (
-                          <span key={e} className="rounded-full bg-cyan-900/30 px-2 py-0.5 text-[10px] text-cyan-300">{e}</span>
+                          <span
+                            key={e}
+                            className="rounded-full bg-cyan-900/30 px-2 py-0.5 text-[10px] text-cyan-300"
+                          >
+                            {e}
+                          </span>
                         ))}
                       </div>
                     )}
@@ -889,16 +1180,26 @@ export default function MoodPage() {
                           rows={2}
                         />
                         <div className="flex gap-2 mt-1">
-                          <button onClick={() => handleEdit(entry.id)} className="rounded bg-cyan-600 px-3 py-1 text-xs text-white">
+                          <button
+                            onClick={() => handleEdit(entry.id)}
+                            className="rounded bg-cyan-600 px-3 py-1 text-xs text-white"
+                          >
                             Save
                           </button>
-                          <button onClick={() => setEditingId(null)} className="rounded bg-slate-700 px-3 py-1 text-xs text-slate-300">
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="rounded bg-slate-700 px-3 py-1 text-xs text-slate-300"
+                          >
                             Cancel
                           </button>
                         </div>
                       </div>
                     ) : (
-                      entry.notes && <p className="mt-2 text-sm text-slate-400">{entry.notes}</p>
+                      entry.notes && (
+                        <p className="mt-2 text-sm text-slate-400">
+                          {entry.notes}
+                        </p>
+                      )
                     )}
                   </div>
                 ))}
@@ -915,20 +1216,33 @@ export default function MoodPage() {
           {weeklyScore && (
             <Card title="📊 Weekly Summary">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <MiniStat label="Avg Mood" value={`${weeklyScore.average_mood.toFixed(1)}/10`} />
+                <MiniStat
+                  label="Avg Mood"
+                  value={`${weeklyScore.average_mood.toFixed(1)}/10`}
+                />
                 <MiniStat label="Entries" value={weeklyScore.entries_count} />
-                <MiniStat label="Consistency" value={`${(weeklyScore.consistency_ratio * 100).toFixed(0)}%`} />
-                <MiniStat label="Stability" value={`${(weeklyScore.stability_score * 100).toFixed(0)}%`} />
+                <MiniStat
+                  label="Consistency"
+                  value={`${(weeklyScore.consistency_ratio * 100).toFixed(0)}%`}
+                />
+                <MiniStat
+                  label="Stability"
+                  value={`${(weeklyScore.stability_score * 100).toFixed(0)}%`}
+                />
               </div>
               <div className="mt-4">
                 <div className="flex justify-between text-sm text-slate-400 mb-1">
                   <span>Weekly Health Score</span>
-                  <span className="text-cyan-400 font-bold">{weeklyScore.weekly_mental_health_score.toFixed(0)}/100</span>
+                  <span className="text-cyan-400 font-bold">
+                    {weeklyScore.weekly_mental_health_score.toFixed(0)}/100
+                  </span>
                 </div>
                 <div className="h-3 rounded-full bg-slate-800 overflow-hidden">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-500"
-                    style={{ width: `${weeklyScore.weekly_mental_health_score}%` }}
+                    style={{
+                      width: `${weeklyScore.weekly_mental_health_score}%`,
+                    }}
                   />
                 </div>
               </div>
@@ -939,8 +1253,14 @@ export default function MoodPage() {
           {streaks && (
             <Card title="🔥 Streaks">
               <div className="grid grid-cols-3 gap-4 text-center">
-                <MiniStat label="Current" value={`${streaks.current_streak}d`} />
-                <MiniStat label="Longest" value={`${streaks.longest_streak}d`} />
+                <MiniStat
+                  label="Current"
+                  value={`${streaks.current_streak}d`}
+                />
+                <MiniStat
+                  label="Longest"
+                  value={`${streaks.longest_streak}d`}
+                />
                 <MiniStat label="Total Logs" value={streaks.total_entries} />
               </div>
             </Card>
@@ -951,12 +1271,19 @@ export default function MoodPage() {
             <Card title="📈 Trend Analysis">
               <div className="flex items-center gap-3">
                 <span className="text-3xl">
-                  {trends.trend_direction === "improving" ? "📈" : trends.trend_direction === "declining" ? "📉" : "➡️"}
+                  {trends.trend_direction === "improving"
+                    ? "📈"
+                    : trends.trend_direction === "declining"
+                      ? "📉"
+                      : "➡️"}
                 </span>
                 <div>
-                  <p className="text-lg font-semibold text-slate-100 capitalize">{trends.trend_direction}</p>
+                  <p className="text-lg font-semibold text-slate-100 capitalize">
+                    {trends.trend_direction}
+                  </p>
                   <p className="text-sm text-slate-400">
-                    Over the last {trends.window_days} days (slope: {trends.slope.toFixed(4)})
+                    Over the last {trends.window_days} days (slope:{" "}
+                    {trends.slope.toFixed(4)})
                   </p>
                 </div>
               </div>
@@ -965,7 +1292,10 @@ export default function MoodPage() {
                   <p className="text-sm text-slate-400 mb-2">Top Emotions:</p>
                   <div className="flex flex-wrap gap-2">
                     {trends.top_emotions.map((e) => (
-                      <span key={e.emotion} className="rounded-full bg-cyan-900/30 border border-cyan-700/30 px-3 py-1 text-xs text-cyan-300">
+                      <span
+                        key={e.emotion}
+                        className="rounded-full bg-cyan-900/30 border border-cyan-700/30 px-3 py-1 text-xs text-cyan-300"
+                      >
                         {e.emotion}: {e.avg_score.toFixed(2)}
                       </span>
                     ))}
@@ -980,10 +1310,19 @@ export default function MoodPage() {
             <Card title="🕐 Time-of-Day Patterns">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {patterns.time_of_day.map((t) => (
-                  <div key={t.time} className="rounded-lg bg-slate-800/60 p-3 text-center">
-                    <p className="text-xs text-slate-500 capitalize">{t.time}</p>
-                    <p className="text-lg font-bold text-slate-100">{t.avg_mood.toFixed(1)}</p>
-                    <p className="text-[10px] text-slate-500">{t.count} entries</p>
+                  <div
+                    key={t.time}
+                    className="rounded-lg bg-slate-800/60 p-3 text-center"
+                  >
+                    <p className="text-xs text-slate-500 capitalize">
+                      {t.time}
+                    </p>
+                    <p className="text-lg font-bold text-slate-100">
+                      {t.avg_mood.toFixed(1)}
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      {t.count} entries
+                    </p>
                   </div>
                 ))}
               </div>
@@ -993,7 +1332,9 @@ export default function MoodPage() {
           {/* AI Reflection */}
           <Card title="🤖 AI Weekly Reflection">
             {aiReflection ? (
-              <p className="text-sm text-slate-300 leading-relaxed">{aiReflection}</p>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                {aiReflection}
+              </p>
             ) : (
               <p className="text-sm text-slate-500">
                 Get a personalized reflection based on your recent mood entries.
@@ -1011,14 +1352,17 @@ export default function MoodPage() {
           {/* Recommendations */}
           {recommendation && (
             <Card title="💡 Recommendation">
-              <p className="text-sm text-slate-300 leading-relaxed">{recommendation}</p>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                {recommendation}
+              </p>
             </Card>
           )}
 
           {/* Crisis Safety Net */}
           <Card title="💛 Support Resources">
             <p className="text-sm text-slate-400 mb-3">
-              Remember: it&apos;s okay to ask for help. These resources are always available.
+              Remember: it&apos;s okay to ask for help. These resources are
+              always available.
             </p>
             <button
               onClick={() => router.push("/emergency")}
@@ -1044,7 +1388,9 @@ export default function MoodPage() {
 function Card({ title, children }) {
   return (
     <div className="rounded-2xl border border-slate-700/50 bg-slate-900/70 p-5 backdrop-blur-xl">
-      {title && <h2 className="mb-4 text-lg font-semibold text-slate-200">{title}</h2>}
+      {title && (
+        <h2 className="mb-4 text-lg font-semibold text-slate-200">{title}</h2>
+      )}
       {children}
     </div>
   );

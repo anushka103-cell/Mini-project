@@ -7,7 +7,8 @@ import { useVoicePlayback } from "@/hooks/useVoicePlayback";
 import { usePreferencesManager } from "@/hooks/usePreferencesManager";
 import VoiceSettings from "@/components/avatar/VoiceSettings";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://mindsafe-api.onrender.com";
 
 export default function AICompanion() {
   const [messages, setMessages] = useState([]);

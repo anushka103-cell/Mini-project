@@ -6,7 +6,8 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { saveTokens, clearTokens } from "@/lib/authClient";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://mindsafe-api.onrender.com";
 const GOOGLE_AUTH_URL = process.env.NEXT_PUBLIC_GOOGLE_AUTH_URL;
 
 function readTokens(data) {

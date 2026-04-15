@@ -8,7 +8,7 @@
  */
 
 const DEFAULT_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  process.env.NEXT_PUBLIC_API_URL || "https://mindsafe-api.onrender.com/api";
 const DEFAULT_TIMEOUT = 10000;
 const MAX_RETRIES = 3;
 const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
