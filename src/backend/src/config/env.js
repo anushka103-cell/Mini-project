@@ -37,7 +37,9 @@ const REFRESH_TOKEN_TTL = process.env.REFRESH_TOKEN_TTL || "7d";
 const EMAIL_VERIFICATION_TTL = process.env.EMAIL_VERIFICATION_TTL || "1h";
 const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS || 12);
 const PORT = Number(process.env.PORT || 5000);
-const FRONTEND_ORIGIN = process.env.CORS_ORIGINS || "http://localhost:3000";
+const FRONTEND_ORIGIN =
+  process.env.CORS_ORIGINS ||
+  "http://localhost:3000,https://mind-safe-tan.vercel.app";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 const GOOGLE_CALLBACK_URL =
