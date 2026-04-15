@@ -120,8 +120,9 @@ function createAuthService({
     const normalizedEmail = String(email).trim().toLowerCase();
     const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    // In development without email provider, auto-verify so local testing works
-    const autoVerify = NODE_ENV !== "production" && !resend;
+    // Auto-verify accounts when no email provider is configured,
+    // otherwise email verification is required.
+    const autoVerify = !resend;
 
     const newUser = await userStore.addUser({
       email: normalizedEmail,
